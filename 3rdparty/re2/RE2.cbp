@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="RE2"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install/strip">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 install/strip"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install/local">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 install/local"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="list_install_components">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 list_install_components"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 install"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="re2">
+				<Option output="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/libre2.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+					<Add directory="/opt/local/include/gcc7/c++/"/>
+					<Add directory="/opt/local/include/gcc7/c++//x86_64-apple-darwin17"/>
+					<Add directory="/opt/local/include/gcc7/c++//backward"/>
+					<Add directory="/opt/local/lib/gcc7/gcc/x86_64-apple-darwin17/7.2.0/include"/>
+					<Add directory="/opt/local/include"/>
+					<Add directory="/opt/local/lib/gcc7/gcc/x86_64-apple-darwin17/7.2.0/include-fixed"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 re2"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="re2/fast">
+				<Option output="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/libre2.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+					<Add directory="/opt/local/include/gcc7/c++/"/>
+					<Add directory="/opt/local/include/gcc7/c++//x86_64-apple-darwin17"/>
+					<Add directory="/opt/local/include/gcc7/c++//backward"/>
+					<Add directory="/opt/local/lib/gcc7/gcc/x86_64-apple-darwin17/7.2.0/include"/>
+					<Add directory="/opt/local/include"/>
+					<Add directory="/opt/local/lib/gcc7/gcc/x86_64-apple-darwin17/7.2.0/include-fixed"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 re2/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 test"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="Nightly">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 Nightly"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="Continuous">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 Continuous"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="Experimental">
+				<Option working_dir="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 Experimental"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/bitstate.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/compile.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/dfa.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/filtered_re2.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/filtered_re2.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/mimics_pcre.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/nfa.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/onepass.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/parse.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/perl_groups.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/prefilter.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/prefilter.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/prefilter_tree.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/prefilter_tree.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/prog.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/prog.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/re2.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/re2.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/regexp.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/regexp.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/set.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/set.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/simplify.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/stringpiece.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/stringpiece.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/tostring.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/unicode_casefold.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/unicode_casefold.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/unicode_groups.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/re2/unicode_groups.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/util/rune.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/util/strutil.cc">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/util/strutil.h">
+			<Option target="re2"/>
+		</Unit>
+		<Unit filename="/mywork/github/tfcmake/cmake-build-debug/re2/src/re2/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

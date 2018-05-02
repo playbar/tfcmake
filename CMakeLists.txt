@@ -196,7 +196,8 @@ include(fft2d)
 include(highwayhash)
 include(nsync)
 include(protobuf)
-include(re2)
+#include(re2)
+add_subdirectory(3rdparty/re2)
 include(cub)
 include(sqlite)
 if (tensorflow_BUILD_CC_TESTS)
@@ -205,6 +206,8 @@ endif()
 
 add_definitions(${ADD_CFLAGS})
 link_directories(${ADD_LINK_DIRECTORY})
+
+set(re2_STATIC_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/3rdparty/re2/libre2.a)
 
 set(tensorflow_EXTERNAL_LIBRARIES
     ${gif_STATIC_LIBRARIES}
@@ -217,7 +220,8 @@ set(tensorflow_EXTERNAL_LIBRARIES
     ${highwayhash_STATIC_LIBRARIES}
     ${nsync_STATIC_LIBRARIES}
     ${protobuf_STATIC_LIBRARIES}
-    ${re2_STATIC_LIBRARIES}
+#    ${re2_STATIC_LIBRARIES}
+        re2
     ${sqlite_STATIC_LIBRARIES}
 )
 
@@ -247,6 +251,8 @@ set(tensorflow_EXTERNAL_DEPENDENCIES
     re2
     sqlite_copy_headers_to_destination
 )
+
+set(re2_INCLUDE_DIR ${tensorflow_SOURCE_DIR}/3rdparty/re2 )
 
 include_directories(
     # Source and generated code.
