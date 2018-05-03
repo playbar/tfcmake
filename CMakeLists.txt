@@ -20,12 +20,12 @@ message(STATUS ${tensorflow_source_dir})
 
 # [CLEANUP] Not sure if this is needed (copied from Protobuf)
 # CMake policies
-cmake_policy(SET CMP0022 NEW)
+#cmake_policy(SET CMP0022 NEW)
 
 # Options
 option(tensorflow_VERBOSE "Enable for verbose output" OFF)
 option(tensorflow_ENABLE_SSL_SUPPORT "Enable boringssl support" OFF)
-option(tensorflow_ENABLE_GRPC_SUPPORT "Enable gRPC support" ON)
+option(tensorflow_ENABLE_GRPC_SUPPORT "Enable gRPC support" OFF)
 option(tensorflow_ENABLE_HDFS_SUPPORT "Enable HDFS support" OFF)
 option(tensorflow_ENABLE_JEMALLOC_SUPPORT "Enable jemalloc support" OFF)
 option(tensorflow_BUILD_CC_EXAMPLE "Build the C++ tutorial example" ON)
@@ -193,7 +193,8 @@ include(gemmlowp)
 include(jsoncpp)
 include(farmhash)
 include(fft2d)
-include(highwayhash)
+#include(highwayhash)
+add_subdirectory(3rdparty/highwayhash)
 include(nsync)
 include(protobuf)
 #include(re2)
@@ -217,7 +218,8 @@ set(tensorflow_EXTERNAL_LIBRARIES
     ${jsoncpp_STATIC_LIBRARIES}
     ${farmhash_STATIC_LIBRARIES}
     ${fft2d_STATIC_LIBRARIES}
-    ${highwayhash_STATIC_LIBRARIES}
+#    ${highwayhash_STATIC_LIBRARIES}
+        highwayhash
     ${nsync_STATIC_LIBRARIES}
     ${protobuf_STATIC_LIBRARIES}
 #    ${re2_STATIC_LIBRARIES}
@@ -253,6 +255,7 @@ set(tensorflow_EXTERNAL_DEPENDENCIES
 )
 
 set(re2_INCLUDE_DIR ${tensorflow_SOURCE_DIR}/3rdparty/re2 )
+set(highwayhash_INCLUDE_DIR ${tensorflow_SOURCE_DIR}/3rdparty/highwayhash)
 
 include_directories(
     # Source and generated code.
