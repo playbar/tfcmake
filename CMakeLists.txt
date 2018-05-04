@@ -7,6 +7,8 @@ project(tfcmake C CXX)
 # Set C++14 as standard for the whole project
 set(CMAKE_CXX_STANDARD 14)
 
+set(CMAKE_MACOSX_RPATH 1)
+
 # Actual source is the ../../.. directory
 get_filename_component(tf_contrib_source_dir ${tensorflow_SOURCE_DIR} ABSOLUTE)
 get_filename_component(tf_tf_source_dir ${tf_contrib_source_dir} ABSOLUTE)
@@ -25,7 +27,7 @@ message(STATUS ${tensorflow_source_dir})
 # Options
 option(tensorflow_VERBOSE "Enable for verbose output" OFF)
 option(tensorflow_ENABLE_SSL_SUPPORT "Enable boringssl support" OFF)
-option(tensorflow_ENABLE_GRPC_SUPPORT "Enable gRPC support" OFF)
+option(tensorflow_ENABLE_GRPC_SUPPORT "Enable gRPC support" ON)
 option(tensorflow_ENABLE_HDFS_SUPPORT "Enable HDFS support" OFF)
 option(tensorflow_ENABLE_JEMALLOC_SUPPORT "Enable jemalloc support" OFF)
 option(tensorflow_BUILD_CC_EXAMPLE "Build the C++ tutorial example" ON)
@@ -243,7 +245,7 @@ set(tensorflow_EXTERNAL_DEPENDENCIES
     lmdb_copy_headers_to_destination
     jsoncpp
     farmhash_copy_headers_to_destination
-    highwayhash_copy_headers_to_destination
+#    highwayhash_copy_headers_to_destination
     nsync_copy_headers_to_destination
     protobuf
     eigen
@@ -287,6 +289,7 @@ if(tensorflow_ENABLE_SSL_SUPPORT)
 endif()
 if(tensorflow_ENABLE_GRPC_SUPPORT)
   include(grpc)
+#  add_subdirectory(3rdparty/grpc)
   list(APPEND tensorflow_EXTERNAL_LIBRARIES ${grpc_STATIC_LIBRARIES})
   list(APPEND tensorflow_EXTERNAL_DEPENDENCIES grpc)
   include_directories(${GRPC_INCLUDE_DIRS})
