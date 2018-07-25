@@ -185,7 +185,8 @@ if (tensorflow_ENABLE_JEMALLOC_SUPPORT)
 endif()
 
 # External dependencies
-include(zlib)
+add_subdirectory(3rdparty/zlib)
+#include(zlib)
 include(gif)
 include(png)
 include(jpeg)
@@ -238,7 +239,7 @@ else (systemlib_ZLIB)
 endif (systemlib_ZLIB)
 
 set(tensorflow_EXTERNAL_DEPENDENCIES
-    zlib_copy_headers_to_destination
+#    zlib_copy_headers_to_destination
     gif_copy_headers_to_destination
     png_copy_headers_to_destination
     jpeg_copy_headers_to_destination
@@ -258,6 +259,8 @@ set(tensorflow_EXTERNAL_DEPENDENCIES
 
 set(re2_INCLUDE_DIR ${tensorflow_SOURCE_DIR}/3rdparty/re2 )
 set(highwayhash_INCLUDE_DIR ${tensorflow_SOURCE_DIR}/3rdparty/highwayhash)
+set(zlib_INCLUDE_DIR ${tensorflow_SOURCE_DIR}/3rdparty/zlib )
+
 
 include_directories(
     # Source and generated code.
