@@ -1,8 +1,0 @@
-/mywork/github/tfcmake/cmake-build-debug/zlib/install/lib/libz.1.2.8.dylib
-/mywork/github/tfcmake/cmake-build-debug/zlib/install/lib/libz.1.dylib
-/mywork/github/tfcmake/cmake-build-debug/zlib/install/lib/libz.dylib
-/mywork/github/tfcmake/cmake-build-debug/zlib/install/lib/libz.a
-/mywork/github/tfcmake/cmake-build-debug/zlib/install/include/zconf.h
-/mywork/github/tfcmake/cmake-build-debug/zlib/install/include/zlib.h
-/mywork/github/tfcmake/cmake-build-debug/zlib/install/share/man/man3/zlib.3
-/mywork/github/tfcmake/cmake-build-debug/zlib/install/share/pkgconfig/zlib.pc

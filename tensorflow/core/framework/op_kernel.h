@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_FRAMEWORK_OP_KERNEL_H_
-#define TENSORFLOW_FRAMEWORK_OP_KERNEL_H_
+#ifndef TENSORFLOW_CORE_FRAMEWORK_OP_KERNEL_H_
+#define TENSORFLOW_CORE_FRAMEWORK_OP_KERNEL_H_
 
 #include <functional>
 
@@ -24,6 +24,7 @@ limitations under the License.
 #include "tensorflow/core/framework/cancellation.h"
 #include "tensorflow/core/framework/control_flow.h"
 #include "tensorflow/core/framework/device_base.h"
+#include "tensorflow/core/framework/kernel_def.pb.h"
 #include "tensorflow/core/framework/kernel_def_builder.h"
 #include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/framework/op.h"  // TODO(b/62899350): Remove
@@ -534,7 +535,7 @@ class OpKernelContext {
     Rendezvous* rendezvous = nullptr;
 
     // Mechanism for executing a collective op that needs to coordinate
-    // with parallel instances runing on other devices.
+    // with parallel instances running on other devices.
     CollectiveExecutor* collective_executor = nullptr;
 
     // The session state for this op.
@@ -1043,7 +1044,6 @@ class OpKernelContext {
   // For control flow.
   FrameAndIter frame_iter() const { return params_->frame_iter; }
   bool is_input_dead() const { return params_->is_input_dead; }
-  bool* is_output_dead() { return &is_output_dead_; }
 
   // May be used, e.g., to get GPU handles, etc.
   // TODO(tucker): Add example usage.
@@ -1141,8 +1141,6 @@ class OpKernelContext {
 
   // Constructed only if <params->record_tensor_accesses>.
   ManualConstructor<UniqueTensorReferences> referenced_tensors_ GUARDED_BY(mu_);
-
-  bool is_output_dead_ = false;
 
   // The following data members are only used when allocation tracking is
   // enabled.
@@ -1302,6 +1300,16 @@ Status FindKernelDef(const DeviceType& device_type, const NodeDef& node_def,
 // Writes a list of all registered kernels to LOG(INFO), to help users debug
 // missing kernel errors.
 void LogAllRegisteredKernels();
+
+// Gets a list of all registered kernels.
+KernelList GetAllRegisteredKernels();
+
+// Gets a list of all registered kernels for which predicate returns true
+KernelList GetFilteredRegisteredKernels(
+    const std::function<bool(const KernelDef&)>& predicate);
+
+// Gets a list of all registered kernels for a given op
+KernelList GetRegisteredKernelsForOp(StringPiece op_name);
 
 namespace kernel_factory {
 
@@ -1572,4 +1580,4 @@ inline void OpOutputList::set_ref(int i, mutex* mu, Tensor* tensor_for_ref) {
 
 }  // namespace tensorflow
 
-#endif  // TENSORFLOW_FRAMEWORK_OP_KERNEL_H_
+#endif  // TENSORFLOW_CORE_FRAMEWORK_OP_KERNEL_H_

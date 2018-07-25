@@ -35,3 +35,4 @@ xcuserdata/**
 local.properties
 gradleBuild
 cmake-build-debug
+models

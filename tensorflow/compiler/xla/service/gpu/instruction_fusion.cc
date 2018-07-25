@@ -17,7 +17,9 @@ limitations under the License.
 
 #include "tensorflow/compiler/xla/service/gpu/ir_emission_utils.h"
 #include "tensorflow/compiler/xla/service/hlo_opcode.h"
+#include "tensorflow/compiler/xla/service/pattern_matcher.h"
 #include "tensorflow/compiler/xla/shape_util.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 
 namespace xla {
 namespace gpu {
@@ -38,6 +40,7 @@ bool IsFusile(const HloInstruction& hlo) {
          hlo.opcode() == HloOpcode::kDynamicSlice ||
          hlo.opcode() == HloOpcode::kDynamicUpdateSlice ||
          hlo.opcode() == HloOpcode::kFusion ||
+         hlo.opcode() == HloOpcode::kGather ||
          hlo.opcode() == HloOpcode::kPad ||
          hlo.opcode() == HloOpcode::kReduce ||
          hlo.opcode() == HloOpcode::kReduceWindow ||
@@ -46,41 +49,101 @@ bool IsFusile(const HloInstruction& hlo) {
          hlo.opcode() == HloOpcode::kTranspose;
 }
 
+bool IsIEEEFloatingPointScalarConstant(const HloInstruction* constant) {
+  if (constant->opcode() != HloOpcode::kConstant ||
+      !ShapeUtil::IsScalar(constant->shape())) {
+    return false;
+  }
+  auto type = constant->shape().element_type();
+  return type == F16 || type == F32 || type == F64;
+}
+
 }  // namespace
+
+/*static*/ bool GpuInstructionFusion::IsExpensive(
+    const HloInstruction& instruction) {
+  switch (instruction.opcode()) {
+    // We say that floating-point division is cheap on the GPU.
+    case HloOpcode::kDivide:
+      return !ShapeUtil::ElementIsFloating(instruction.shape()) &&
+             InstructionFusion::IsExpensive(instruction);
+
+    default:
+      return InstructionFusion::IsExpensive(instruction);
+  }
+}
 
 bool GpuInstructionFusion::ShouldFuse(HloInstruction* consumer,
                                       int64 operand_index) {
   HloInstruction* producer = consumer->mutable_operand(operand_index);
 
   // Check if we can use output fusion for (A @ B) * alpha
-  if (producer->opcode() == HloOpcode::kDot) {
-    if (consumer->opcode() == HloOpcode::kMultiply) {
-      CHECK_EQ(consumer->operand_count(), 2);
-      int64 other_operand_index = 1 - operand_index;
+  if (producer->opcode() == HloOpcode::kDot ||
+      (producer->opcode() == HloOpcode::kFusion &&
+       producer->fused_expression_root()->opcode() == HloOpcode::kDot)) {
+    int64 other_operand_index = 1 - operand_index;
+    HloInstruction* op1 = nullptr;
+    HloInstruction* op2 = nullptr;
+    if (consumer->operand_count() == 1 &&
+        consumer->opcode() == HloOpcode::kFusion &&
+        consumer->fusion_kind() == HloInstruction::FusionKind::kLoop &&
+        Match(consumer->fused_expression_root(),
+              match::Op()
+                  .WithOpcode(HloOpcode::kMultiply)
+                  .WithOperand(0, match::Op(&op1))
+                  .WithOperand(1, match::Op(&op2)))) {
+      CHECK(op1 != nullptr && op2 != nullptr);
+      // If 'consumer' is a fusion node, it should consist of a broadcast of a
+      // scalar constant fused into a multiply, but nothing more. So one operand
+      // should be a parameter, and the other should be a broadcast.
+      if (op1->opcode() != HloOpcode::kParameter) {
+        std::swap(op1, op2);
+      }
+      if (op1->opcode() != HloOpcode::kParameter ||
+          op2->opcode() != HloOpcode::kBroadcast) {
+        return false;
+      }
+      if (IsIEEEFloatingPointScalarConstant(op2->operand(0))) {
+        return true;
+      }
+    } else if (consumer->operand_count() == 2 &&
+               consumer->opcode() == HloOpcode::kMultiply) {
       const HloInstruction* alpha = consumer->operand(other_operand_index);
-      if (alpha->opcode() == HloOpcode::kConstant &&
-          ShapeUtil::IsScalar(alpha->shape())) {
+      // Fuse if 'alpha' is a broadcast of a scalar constant.
+      if (alpha->opcode() == HloOpcode::kBroadcast &&
+          alpha->dimensions().empty() &&
+          IsIEEEFloatingPointScalarConstant(alpha->operand(0))) {
         return true;
       }
     }
   }
 
-  // Only allow to fuse transpose into an output fusion.
+  // Only allow fusing transpose or broadcast into an output fusion that is
+  // implemented as a Gemm call.
   if (consumer->opcode() == HloOpcode::kFusion &&
-      consumer->fusion_kind() == HloInstruction::FusionKind::kOutput) {
-    if (producer->opcode() != HloOpcode::kTranspose) {
-      return false;
-    }
-    // Check that the transpose is the operand of a dot.
+      consumer->fusion_kind() == HloInstruction::FusionKind::kOutput &&
+      ImplementedAsGemm(*consumer)) {
     auto producer_operand_index = consumer->operand_index(producer);
     auto fused_parameter = consumer->fused_parameter(producer_operand_index);
     const std::vector<HloInstruction*>& fused_parameter_users =
         fused_parameter->users();
-    return (fused_parameter_users.size() == 1 &&
-            fused_parameter_users[0]->opcode() == HloOpcode::kDot);
+    if (fused_parameter_users.size() != 1) {
+      return false;
+    }
+    if (producer->opcode() == HloOpcode::kTranspose) {
+      // Check that the transpose is an operand of a dot.
+      return fused_parameter_users[0]->opcode() == HloOpcode::kDot;
+    }
+    if (producer->opcode() == HloOpcode::kBroadcast) {
+      // Check that the broadcast is a broadcast of a scalar constant into a
+      // multiply.
+      return producer->dimensions().empty() &&
+             IsIEEEFloatingPointScalarConstant(producer->operand(0)) &&
+             fused_parameter_users[0]->opcode() == HloOpcode::kMultiply;
+    }
   }
 
-  // Output fusion is not currently supported on GPUs.
+  // Other output fusions are not currently supported on GPUs.
   if (producer->opcode() == HloOpcode::kFusion) {
     return false;
   }
@@ -112,8 +175,81 @@ bool GpuInstructionFusion::ShouldFuse(HloInstruction* consumer,
     return false;
   }
 
-  return IsFusile(*producer) && IsFusile(*consumer) &&
-         InstructionFusion::ShouldFuse(consumer, operand_index);
+  // Fuse scalar constants into loop fusion nodes, this reduces the number of
+  // parameters and makes matching scalar broadcasts easier.
+  if (ShapeUtil::IsEffectiveScalar(producer->shape()) &&
+      consumer->opcode() == HloOpcode::kFusion &&
+      producer->opcode() == HloOpcode::kConstant) {
+    return true;
+  }
+
+  if (!IsFusile(*producer) || !IsFusile(*consumer) ||
+      !InstructionFusion::ShouldFuse(consumer, operand_index)) {
+    return false;
+  }
+
+  // Limit the maximum number of operands to a fusion.
+  //
+  // There's a limit to how many parameters we can pass to a CUDA kernel, but
+  // exactly what that limit is is hazy, as it depends on (among other things)
+  // how much GPU constant memory is in use for other purposes.
+  //
+  // Moreover, we don't even know at this point how many arguments the CUDA
+  // kernel for this fusion node will have: It depends on buffer assignment,
+  // where we will decide which of the fusion's operands live in XLA's big temp
+  // buffer versus in other allocations.
+  //
+  // As a heuristic, we simply cap the number of fusion operands at
+  // kMaxOperandsPerFusion.  This puts an upper bound on the number of
+  // parameters to the kernel, working around the correctness problem.
+  //
+  // This limit is also often good for performance.  In a fusion with many
+  // operands, each GPU thread likely has to do a lot of work, and so possibly
+  // uses a lot of registers, thus limiting occupancy.
+  //
+  // We put this check last because it's expensive to compute.
+
+  // The new fusion will have no more operands than
+  //   producer_operands + consumer_operands - 1
+  // (minus one because we're fusing the producer->consumer edge).  This fact
+  // may be enough to let us avoid having to compute the true total number of
+  // operands, taking into account the fact that producer and consumer may share
+  // operands.
+  if (producer->operand_count() + consumer->operand_count() - 1 >
+      kMaxOperandsPerFusion) {
+    tensorflow::gtl::FlatSet<const HloInstruction*> producer_operands(
+        producer->operands().begin(), producer->operands().end());
+    int64 new_num_operands =
+        producer->operand_count() +
+        c_count_if(consumer->operands(), [&](const HloInstruction* operand) {
+          return operand != producer && !producer_operands.count(operand);
+        });
+    if (new_num_operands > kMaxOperandsPerFusion) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool GpuInstructionFusion::ShouldFuseIntoMultiOutput(HloInstruction* consumer,
+                                                     int64 operand_index) {
+  const HloInstruction* producer = consumer->operand(operand_index);
+  // The IR emitter has limited support for non-loop fusions with multi output
+  // at present.
+  // TODO(tjoerg): Relax this constraint to allow for arbitraty kinds of fusion.
+  if (consumer->opcode() == HloOpcode::kFusion &&
+      consumer->fusion_kind() != HloInstruction::FusionKind::kLoop) {
+    return false;
+  }
+  // Multi-output fusion requires instructions with compatible shapes.
+  if (!ShapeUtil::Compatible(producer->shape(), consumer->shape())) {
+    return false;
+  }
+  // TODO(tjoerg): Stop calling `ShouldFuse` to relax the criteria for
+  // multi-output fusion. In particular, do not check whether an instruction is
+  // expensive to duplicate, since this doesn't matter here.
+  return GpuInstructionFusion::ShouldFuse(consumer, operand_index);
 }
 
 HloInstruction::FusionKind GpuInstructionFusion::ChooseKind(
@@ -121,7 +257,9 @@ HloInstruction::FusionKind GpuInstructionFusion::ChooseKind(
   if (IsReductionToVector(*consumer)) {
     return HloInstruction::FusionKind::kInput;
   }
-  if (producer->opcode() == HloOpcode::kDot) {
+  if (producer->opcode() == HloOpcode::kDot ||
+      (producer->opcode() == HloOpcode::kFusion &&
+       producer->fused_expression_root()->opcode() == HloOpcode::kDot)) {
     return HloInstruction::FusionKind::kOutput;
   }
   if (HloOpcode::kFusion == consumer->opcode()) {

@@ -1,5 +1,0 @@
-/mywork/github/tfcmake/cmake-build-debug/re2/install/include/re2/filtered_re2.h
-/mywork/github/tfcmake/cmake-build-debug/re2/install/include/re2/re2.h
-/mywork/github/tfcmake/cmake-build-debug/re2/install/include/re2/set.h
-/mywork/github/tfcmake/cmake-build-debug/re2/install/include/re2/stringpiece.h
-/mywork/github/tfcmake/cmake-build-debug/re2/install/lib/libre2.a
