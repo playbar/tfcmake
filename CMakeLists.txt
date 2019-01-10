@@ -8,9 +8,9 @@ project(tfmake C CXX)
 set(CMAKE_CXX_STANDARD 14)
 
 # Actual source is the ../../.. directory  PATH ABSOLUTE
-get_filename_component(tf_contrib_source_dir ${tensorflow_SOURCE_DIR} ABSOLUTE)
+get_filename_component(tf_contrib_source_dir ${tfmake_SOURCE_DIR}  ABSOLUTE)
 get_filename_component(tf_tf_source_dir ${tf_contrib_source_dir}/tensorflow ABSOLUTE)
-get_filename_component(tensorflow_source_dir ${tensorflow_SOURCE_DIR} ABSOLUTE)
+get_filename_component(tensorflow_source_dir ${tfmake_SOURCE_DIR} ABSOLUTE)
 
 message(STATUS ${tensorflow_SOURCE_DIR})
 message(STATUS ${tf_contrib_source_dir})
