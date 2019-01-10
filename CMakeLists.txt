@@ -205,6 +205,7 @@ endif()
 
 # External dependencies
 include(zlib)
+#add_subdirectory(third_party/zlib)
 include(gif)
 include(png)
 include(jpeg)
@@ -253,7 +254,12 @@ else (systemlib_ZLIB)
     ${zlib_STATIC_LIBRARIES})
 endif (systemlib_ZLIB)
 
+#    zlib_copy_headers_to_destination
+
+message(STATUS ${zlib_copy_headers_to_destination})
+
 set(tensorflow_EXTERNAL_DEPENDENCIES
+#    ${CMAKE_SOURCE_DIR}/third_party/zlib
     zlib_copy_headers_to_destination
     gif_copy_headers_to_destination
     png_copy_headers_to_destination
