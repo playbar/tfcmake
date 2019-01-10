@@ -22,7 +22,7 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "grpcpp/grpcpp.h"
+#include "grpc++/grpc++.h"
 
 #include "tensorflow/core/distributed_runtime/rpc/grpc_util.h"
 

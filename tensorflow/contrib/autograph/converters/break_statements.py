@@ -12,34 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Lowers break statements to conditionals."""
+"""Canonicalizes break statements by de-sugaring into a control boolean."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow.contrib.autograph.core import converter
 from tensorflow.contrib.autograph.pyct import anno
 from tensorflow.contrib.autograph.pyct import templates
+from tensorflow.contrib.autograph.pyct import transformer
 from tensorflow.contrib.autograph.pyct.static_analysis.annos import NodeAnno
 
 
-class _Break(object):
-
-  def __init__(self):
-    self.used = False
-    self.control_var_name = None
-
-  def __repr__(self):
-    return 'used: %s, var: %s' % (self.used, self.control_var_name)
+# Tags for local state.
+BREAK_USED = 'break_used'
+CONTROL_VAR_NAME = 'control_var_name'
 
 
-class BreakTransformer(converter.Base):
+class BreakStatementTransformer(transformer.Base):
   """Canonicalizes break statements into additional conditionals."""
 
   def visit_Break(self, node):
-    self.state[_Break].used = True
-    var_name = self.state[_Break].control_var_name
+    self.set_local(BREAK_USED, True)
+    var_name = self.get_local(CONTROL_VAR_NAME)
     # TODO(mdan): This will fail when expanded inside a top-level else block.
     template = """
       var_name = True
@@ -62,20 +57,20 @@ class BreakTransformer(converter.Base):
         block=block)
     return node
 
-  def _process_body(self, nodes, break_var):
-    self.state[_Break].enter()
-    self.state[_Break].control_var_name = break_var
+  def _track_body(self, nodes, break_var):
+    self.enter_local_scope()
+    self.set_local(CONTROL_VAR_NAME, break_var)
     nodes = self.visit_block(nodes)
-    break_used = self.state[_Break].used
-    self.state[_Break].exit()
+    break_used = self.get_local(BREAK_USED, False)
+    self.exit_local_scope()
     return nodes, break_used
 
   def visit_While(self, node):
     scope = anno.getanno(node, NodeAnno.BODY_SCOPE)
-    break_var = self.ctx.namer.new_symbol('break_', scope.referenced)
+    break_var = self.context.namer.new_symbol('break_', scope.referenced)
 
     node.test = self.visit(node.test)
-    node.body, break_used = self._process_body(node.body, break_var)
+    node.body, break_used = self._track_body(node.body, break_var)
     # A break in the else clause applies to the containing scope.
     node.orelse = self.visit_block(node.orelse)
 
@@ -102,11 +97,11 @@ class BreakTransformer(converter.Base):
 
   def visit_For(self, node):
     scope = anno.getanno(node, NodeAnno.BODY_SCOPE)
-    break_var = self.ctx.namer.new_symbol('break_', scope.referenced)
+    break_var = self.context.namer.new_symbol('break_', scope.referenced)
 
     node.target = self.visit(node.target)
     node.iter = self.visit(node.iter)
-    node.body, break_used = self._process_body(node.body, break_var)
+    node.body, break_used = self._track_body(node.body, break_var)
     # A break in the else clause applies to the containing scope.
     node.orelse = self.visit_block(node.orelse)
 
@@ -142,5 +137,5 @@ class BreakTransformer(converter.Base):
     return node
 
 
-def transform(node, ctx):
-  return BreakTransformer(ctx).visit(node)
+def transform(node, context):
+  return BreakStatementTransformer(context).visit(node)

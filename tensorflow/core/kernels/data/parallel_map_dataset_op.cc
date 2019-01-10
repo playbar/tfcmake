@@ -151,7 +151,8 @@ class ParallelMapDatasetOp : public UnaryDatasetOpKernel {
     class Iterator : public DatasetIterator<Dataset> {
      public:
       explicit Iterator(const Params& params)
-          : DatasetIterator<Dataset>(params) {}
+          : DatasetIterator<Dataset>(params),
+            invocation_results_(params.dataset->num_parallel_calls_) {}
 
       ~Iterator() override {
         // TODO(mrry): Replace this cancellation logic with a
@@ -159,13 +160,13 @@ class ParallelMapDatasetOp : public UnaryDatasetOpKernel {
         // but it would be possible to thread a cancellation manager
         // through the IteratorContext to upstream,
         // potentially-blocking iterators, when we add these.
-        mutex_lock l(mu_);
-        // Cancel the runner thread.
-        cancelled_ = true;
-        cond_var_.notify_all();
-        // Wait for all in-flight calls to complete.
-        while (num_calls_ > 0) {
-          cond_var_.wait(l);
+        {
+          mutex_lock l(mu_);
+          for (size_t i = 0; i < dataset()->num_parallel_calls_; ++i) {
+            if (invocation_results_[i].notification) {
+              invocation_results_[i].notification->WaitForNotification();
+            }
+          }
         }
       }
 
@@ -176,191 +177,173 @@ class ParallelMapDatasetOp : public UnaryDatasetOpKernel {
       Status GetNextInternal(IteratorContext* ctx,
                              std::vector<Tensor>* out_tensors,
                              bool* end_of_sequence) override {
-        std::shared_ptr<InvocationResult> result;
-        {
-          mutex_lock l(mu_);
-          EnsureRunnerThreadStarted(ctx);
-          while (invocation_results_.empty()) {
-            cond_var_.wait(l);
-          }
-          std::swap(result, invocation_results_.front());
-          invocation_results_.pop_front();
+        mutex_lock l(mu_);
+
+        // Ensure that there are `dataset()->num_parallel_calls_`
+        // invocations of `func_` outstanding at once.
+        while (input_impl_ && (num_inputs_consumed_ - num_outputs_consumed_ <
+                               dataset()->num_parallel_calls_)) {
+          InvokeFunctionLocked(ctx);
         }
-        cond_var_.notify_all();
-        result->notification.WaitForNotification();
-        return ProcessResult(result, out_tensors, end_of_sequence);
+
+        if (!input_impl_ && num_inputs_consumed_ == num_outputs_consumed_) {
+          *end_of_sequence = true;
+          return Status::OK();
+        }
+
+        // Read the next result out of `invocation_results_`, which
+        // acts as a circular buffer.
+        const size_t result_index =
+            num_outputs_consumed_ % dataset()->num_parallel_calls_;
+        InvocationResult* result = &invocation_results_[result_index];
+        *end_of_sequence = false;
+        if (result->notification) {
+          result->notification->WaitForNotification();
+          if (result->status.ok()) {
+            std::swap(*out_tensors, result->return_values);
+          }
+        }
+        ++num_outputs_consumed_;
+        if (errors::IsOutOfRange(result->status)) {
+          // `f` may deliberately raise `errors::OutOfRange` to indicate
+          // that we should terminate the iteration early.
+          *end_of_sequence = true;
+          return Status::OK();
+        } else {
+          return result->status;
+        }
       }
 
      protected:
       Status SaveInternal(IteratorStateWriter* writer) override {
         mutex_lock l(mu_);
-        // Wait for all in-flight calls to complete.
-        while (num_calls_ > 0) {
-          cond_var_.wait(l);
+        if (input_impl_) {
+          TF_RETURN_IF_ERROR(SaveParent(writer, input_impl_));
+        } else {
+          TF_RETURN_IF_ERROR(
+              writer->WriteScalar(full_name("end_of_input"), ""));
         }
-        CHECK_EQ(num_calls_, 0);
-        TF_RETURN_IF_ERROR(SaveParent(writer, input_impl_));
+        TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("num_inputs_consumed"),
+                                               num_inputs_consumed_));
         TF_RETURN_IF_ERROR(writer->WriteScalar(
-            full_name("invocation_results.size"), invocation_results_.size()));
-        for (size_t i = 0; i < invocation_results_.size(); i++) {
-          std::shared_ptr<InvocationResult> result = invocation_results_[i];
-          TF_RETURN_IF_ERROR(WriteStatusLocked(writer, i, result->status));
-          TF_RETURN_IF_ERROR(writer->WriteScalar(
-              full_name(strings::StrCat("invocation_results[", i, "].size")),
-              result->return_values.size()));
-          for (size_t j = 0; j < result->return_values.size(); j++) {
-            TF_RETURN_IF_ERROR(writer->WriteTensor(
-                full_name(
-                    strings::StrCat("invocation_results[", i, "][", j, "]")),
-                result->return_values[j]));
-          }
-          if (result->end_of_input) {
+            full_name("num_outputs_consumed"), num_outputs_consumed_));
+
+        for (size_t i = 0; i < dataset()->num_parallel_calls_; i++) {
+          if (invocation_results_[i].notification) {
+            invocation_results_[i].notification->WaitForNotification();
+            TF_RETURN_IF_ERROR(
+                WriteStatusLocked(writer, i, invocation_results_[i].status));
             TF_RETURN_IF_ERROR(writer->WriteScalar(
-                full_name(strings::StrCat("invocation_results[", i,
-                                          "].end_of_input")),
+                full_name(strings::StrCat("invocation_results[", i, "].size")),
+                invocation_results_[i].return_values.size()));
+            for (size_t j = 0; j < invocation_results_[i].return_values.size();
+                 j++) {
+              TF_RETURN_IF_ERROR(writer->WriteTensor(
+                  full_name(
+                      strings::StrCat("invocation_results[", i, "][", j, "]")),
+                  invocation_results_[i].return_values[j]));
+            }
+          } else {
+            TF_RETURN_IF_ERROR(writer->WriteScalar(
+                full_name(strings::StrCat("invocation_results[", i, "]_empty")),
                 ""));
           }
         }
+
         return Status::OK();
       }
 
       Status RestoreInternal(IteratorContext* ctx,
                              IteratorStateReader* reader) override {
         mutex_lock l(mu_);
-        TF_RETURN_IF_ERROR(RestoreParent(ctx, reader, input_impl_));
-        int64 invocation_results_size;
-        TF_RETURN_IF_ERROR(reader->ReadScalar(
-            full_name("invocation_results.size"), &invocation_results_size));
-        for (size_t i = 0; i < invocation_results_size; i++) {
-          std::shared_ptr<InvocationResult> result(new InvocationResult());
-          invocation_results_.push_back(result);
-          TF_RETURN_IF_ERROR(ReadStatusLocked(reader, i, &result->status));
-          size_t num_return_values;
-          {
-            int64 size;
-            TF_RETURN_IF_ERROR(reader->ReadScalar(
-                full_name(strings::StrCat("invocation_results[", i, "].size")),
-                &size));
-            num_return_values = static_cast<size_t>(size);
-            if (num_return_values != size) {
-              return errors::InvalidArgument(strings::StrCat(
+        if (reader->Contains(full_name("end_of_input"))) {
+          input_impl_.reset();
+        } else {
+          TF_RETURN_IF_ERROR(RestoreParent(ctx, reader, input_impl_));
+        }
+        TF_RETURN_IF_ERROR(reader->ReadScalar(full_name("num_inputs_consumed"),
+                                              &num_inputs_consumed_));
+        TF_RETURN_IF_ERROR(reader->ReadScalar(full_name("num_outputs_consumed"),
+                                              &num_outputs_consumed_));
+        for (size_t i = 0; i < dataset()->num_parallel_calls_; i++) {
+          InvocationResult* result = &invocation_results_[i];
+          *result = InvocationResult();
+          if (!reader->Contains(full_name(
+                  strings::StrCat("invocation_results[", i, "]_empty")))) {
+            result->notification.reset(new Notification);
+            result->notification->Notify();
+            TF_RETURN_IF_ERROR(ReadStatusLocked(reader, i, &result->status));
+            size_t num_return_values;
+            {
+              int64 size;
+              TF_RETURN_IF_ERROR(
+                  reader->ReadScalar(full_name(strings::StrCat(
+                                         "invocation_results[", i, "].size")),
+                                     &size));
+              num_return_values = static_cast<size_t>(size);
+              if (num_return_values != size) {
+                return errors::InvalidArgument(strings::StrCat(
+                    full_name(
+                        strings::StrCat("invocation_results[", i, "].size")),
+                    ": ", size, " is not a valid value of type size_t."));
+              }
+            }
+            result->return_values.reserve(num_return_values);
+            for (size_t j = 0; j < num_return_values; j++) {
+              result->return_values.emplace_back();
+              TF_RETURN_IF_ERROR(reader->ReadTensor(
                   full_name(
-                      strings::StrCat("invocation_results[", i, "].size")),
-                  ": ", size, " is not a valid value of type size_t."));
+                      strings::StrCat("invocation_results[", i, "][", j, "]")),
+                  &result->return_values.back()));
             }
           }
-          result->return_values.reserve(num_return_values);
-          for (size_t j = 0; j < num_return_values; j++) {
-            result->return_values.emplace_back();
-            TF_RETURN_IF_ERROR(
-                reader->ReadTensor(full_name(strings::StrCat(
-                                       "invocation_results[", i, "][", j, "]")),
-                                   &result->return_values.back()));
-          }
-          result->end_of_input = reader->Contains(full_name(
-              strings::StrCat("invocation_results[", i, "].end_of_input")));
-          result->notification.Notify();
         }
         return Status::OK();
       }
 
      private:
       struct InvocationResult {
-        Notification notification;
         Status status;
+        std::unique_ptr<Notification> notification;
         std::vector<Tensor> return_values;
-        bool end_of_input;
       };
 
-      void EnsureRunnerThreadStarted(IteratorContext* ctx)
+      void InvokeFunctionLocked(IteratorContext* ctx)
           EXCLUSIVE_LOCKS_REQUIRED(mu_) {
-        if (!runner_thread_) {
-          std::shared_ptr<IteratorContext> ctx_copy(new IteratorContext(*ctx));
-          runner_thread_.reset(ctx->env()->StartThread(
-              {}, "runner_thread",
-              std::bind(&Iterator::RunnerThread, this, ctx_copy)));
-        }
-      }
+        DCHECK(input_impl_);
+        DCHECK(num_inputs_consumed_ - num_outputs_consumed_ <
+               dataset()->num_parallel_calls_);
 
-      void CallCompleted(const std::shared_ptr<InvocationResult>& result)
-          LOCKS_EXCLUDED(mu_) {
-        {
-          mutex_lock l(mu_);
-          num_calls_--;
-        }
-        result->notification.Notify();
-        cond_var_.notify_all();
-      }
+        // The result of invoking the function will be written into the next
+        // slot in `invocation_results_`, which acts as a circular buffer.
+        const size_t result_index =
+            num_inputs_consumed_ % dataset()->num_parallel_calls_;
+        InvocationResult* result = &invocation_results_[result_index];
+        *result = InvocationResult();
 
-      void CallFunction(const std::shared_ptr<IteratorContext>& ctx,
-                        const std::shared_ptr<InvocationResult>& result)
-          LOCKS_EXCLUDED(mu_) {
         // Get the next input element.
         std::vector<Tensor> input_element;
-        result->status = input_impl_->GetNext(ctx.get(), &input_element,
-                                              &result->end_of_input);
-        if (result->end_of_input || !result->status.ok()) {
-          CallCompleted(result);
-          return;
+        bool end_of_input = false;
+        result->status =
+            input_impl_->GetNext(ctx, &input_element, &end_of_input);
+        if (end_of_input) {
+          input_impl_.reset();
+          result->status = errors::OutOfRange("");
+        } else {
+          ++num_inputs_consumed_;
         }
 
-        // Call `func_(input_element)`, store the result in
-        // `result->return_values`, and notify `result->notification` to unblock
-        // a consumer.
-        auto done = [this, result](Status status) {
-          result->status.Update(status);
-          CallCompleted(result);
-        };
-        dataset()->captured_func_->RunAsync(ctx.get(), std::move(input_element),
-                                            &result->return_values, done);
-      }
-
-      int64 MaxInvocationResults() { return dataset()->num_parallel_calls_; }
-
-      Status ProcessResult(const std::shared_ptr<InvocationResult>& result,
-                           std::vector<Tensor>* out_tensors,
-                           bool* end_of_sequence) {
-        if (!result->end_of_input && result->status.ok()) {
-          *out_tensors = std::move(result->return_values);
-          *end_of_sequence = false;
-          return Status::OK();
-        }
-        if (errors::IsOutOfRange(result->status)) {
-          // `f` may deliberately raise `errors::OutOfRange` to indicate that we
-          // should terminate the iteration early.
-          *end_of_sequence = true;
-          return Status::OK();
-        }
-        *end_of_sequence = result->end_of_input;
-        return result->status;
-      }
-
-      void RunnerThread(const std::shared_ptr<IteratorContext>& ctx) {
-        std::vector<std::shared_ptr<InvocationResult>> new_calls;
-        new_calls.reserve(dataset()->num_parallel_calls_);
-        while (true) {
-          {
-            mutex_lock l(mu_);
-            while (!cancelled_ &&
-                   (num_calls_ >= dataset()->num_parallel_calls_ ||
-                    invocation_results_.size() >= MaxInvocationResults())) {
-              cond_var_.wait(l);
-            }
-            if (cancelled_) {
-              return;
-            }
-            while (num_calls_ < dataset()->num_parallel_calls_ &&
-                   invocation_results_.size() < MaxInvocationResults()) {
-              invocation_results_.emplace_back(new InvocationResult());
-              new_calls.push_back(invocation_results_.back());
-              num_calls_++;
-            }
-          }
-          cond_var_.notify_all();
-          for (const auto& call : new_calls) {
-            CallFunction(ctx, call);
-          }
-          new_calls.clear();
+        if (result->status.ok()) {
+          // Call `func_(input_element)`, store the result in
+          // `result->return_values`, and notify `result->notification`
+          // to unblock a consumer.
+          result->notification.reset(new Notification);
+          dataset()->captured_func_->RunAsync(
+              ctx, std::move(input_element), &result->return_values,
+              [result, result_index](Status ret_status) {
+                result->status.Update(ret_status);
+                result->notification->Notify();
+              });
         }
       }
 
@@ -403,22 +386,11 @@ class ParallelMapDatasetOp : public UnaryDatasetOpKernel {
             strings::StrCat("invocation_results[", index, "].error_message"));
       }
 
-      // Used for coordination between the main thread and the runner thread.
       mutex mu_;
-      // Used for coordination between the main thread and the runner thread. In
-      // particular, the runner thread should only schedule new calls when the
-      // number of in-flight calls is less than the user specified level of
-      // parallelism and there are slots available in the `invocation_results_`
-      // buffer.
-      condition_variable cond_var_;
-      // Counts the number of outstanding calls.
-      int64 num_calls_ GUARDED_BY(mu_) = 0;
-      std::unique_ptr<IteratorBase> input_impl_;
-      // Buffer for storing the invocation results.
-      std::deque<std::shared_ptr<InvocationResult>> invocation_results_
-          GUARDED_BY(mu_);
-      std::unique_ptr<Thread> runner_thread_ GUARDED_BY(mu_);
-      bool cancelled_ GUARDED_BY(mu_) = false;
+      std::unique_ptr<IteratorBase> input_impl_ GUARDED_BY(mu_);
+      std::vector<InvocationResult> invocation_results_ GUARDED_BY(mu_);
+      int64 num_inputs_consumed_ GUARDED_BY(mu_) = 0;
+      int64 num_outputs_consumed_ GUARDED_BY(mu_) = 0;
     };
 
     const DatasetBase* const input_;

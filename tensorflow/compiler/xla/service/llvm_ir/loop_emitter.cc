@@ -33,24 +33,26 @@ namespace xla {
 namespace llvm_ir {
 
 LoopEmitter::LoopEmitter(const BodyEmitter& body_emitter, const Shape& shape,
-                         llvm::IRBuilder<>* b)
-    : body_emitter_(body_emitter), shape_(shape), b_(b) {}
+                         llvm::IRBuilder<>* ir_builder)
+    : body_emitter_(body_emitter), shape_(shape), ir_builder_(ir_builder) {}
 
 LoopEmitter::LoopEmitter(const ElementGenerator& target_element_generator,
-                         const IrArray& target_array, llvm::IRBuilder<>* b)
+                         const IrArray& target_array,
+                         llvm::IRBuilder<>* ir_builder)
     : body_emitter_([=](const llvm_ir::IrArray::Index array_index) -> Status {
         // Convert target_element_generator to a BodyEmitter.
         TF_ASSIGN_OR_RETURN(llvm::Value * target_element,
                             target_element_generator(array_index));
-        target_array.EmitWriteArrayElement(array_index, target_element, b);
+        target_array.EmitWriteArrayElement(array_index, target_element,
+                                           ir_builder);
         return Status::OK();
       }),
       shape_(target_array.GetShape()),
-      b_(b) {}
+      ir_builder_(ir_builder) {}
 
 static LoopEmitter::BodyEmitter MakeBodyEmitterForMultiOutputFusion(
     const ElementGenerator& target_element_generator,
-    const std::vector<IrArray>& target_arrays, llvm::IRBuilder<>* b) {
+    const std::vector<IrArray>& target_arrays, llvm::IRBuilder<>* ir_builder) {
   return [=](const llvm_ir::IrArray::Index array_index) {
     TF_ASSIGN_OR_RETURN(llvm::Value * target_element,
                         target_element_generator(array_index));
@@ -62,7 +64,8 @@ static LoopEmitter::BodyEmitter MakeBodyEmitterForMultiOutputFusion(
 
     for (int64 i = 0; i < target_arrays.size(); ++i) {
       target_arrays[i].EmitWriteArrayElement(
-          array_index, b->CreateExtractValue(target_element, i), b);
+          array_index, ir_builder->CreateExtractValue(target_element, i),
+          ir_builder);
     }
     return Status::OK();
   };
@@ -70,36 +73,34 @@ static LoopEmitter::BodyEmitter MakeBodyEmitterForMultiOutputFusion(
 
 LoopEmitter::LoopEmitter(const ElementGenerator& target_element_generator,
                          tensorflow::gtl::ArraySlice<IrArray> target_arrays,
-                         llvm::IRBuilder<>* b)
+                         llvm::IRBuilder<>* ir_builder)
     : body_emitter_(MakeBodyEmitterForMultiOutputFusion(
           target_element_generator,
-          std::vector<IrArray>(target_arrays.begin(), target_arrays.end()), b)),
+          std::vector<IrArray>(target_arrays.begin(), target_arrays.end()),
+          ir_builder)),
       shape_(target_arrays[0].GetShape()),
-      b_(b) {
+      ir_builder_(ir_builder) {
   // Sanity check: In multi-output fusion, all shapes produced must have the
   // same dimensions.
   for (const IrArray& array : target_arrays) {
-    CHECK(ShapeUtil::SameDimensions(shape_, array.GetShape()))
-        << ": '" << shape_.ShortDebugString() << "' does not match '"
-        << array.GetShape().ShortDebugString() << "'";
+    CHECK(ShapeUtil::SameDimensions(shape_, array.GetShape()));
   }
 }
 
 std::vector<IrArray::Index> LoopEmitter::EmitIndexAndSetExitBasicBlock(
-    tensorflow::StringPiece loop_name, llvm::Type* index_type) {
-  CHECK_NE(index_type, nullptr);
+    tensorflow::StringPiece loop_name) {
   if (ShapeUtil::IsScalar(shape_)) {
     // No loop needed, so set exit_bb_ to nullptr.
     exit_bb_ = nullptr;
-    return {IrArray::Index(index_type)};
+    return {IrArray::Index()};
   }
 
   // Create loop nest with one for-loop for each dimension of the target shape.
   // Loops are added from outermost to innermost order with the ForLoopNest
   // class so emit loops in order from most-major dimension down to most-minor
   // dimension (of the target shape).
-  ForLoopNest loop_nest(loop_name, b_);
-  IrArray::Index array_index(index_type, shape_.dimensions_size());
+  ForLoopNest loop_nest(loop_name, ir_builder_);
+  IrArray::Index array_index(shape_.dimensions_size());
   for (int i = 0; i < LayoutUtil::MinorToMajor(shape_).size(); ++i) {
     int64 dimension = LayoutUtil::Major(shape_.layout(), i);
     std::unique_ptr<ForLoop> loop = loop_nest.AddLoop(
@@ -112,8 +113,8 @@ std::vector<IrArray::Index> LoopEmitter::EmitIndexAndSetExitBasicBlock(
   // Set IR builder insertion point to the loop body basic block of the
   // innermost loop.
   llvm::BasicBlock* innermost_body_bb = loop_nest.GetInnerLoopBodyBasicBlock();
-  b_->SetInsertPoint(innermost_body_bb,
-                     innermost_body_bb->getFirstInsertionPt());
+  ir_builder_->SetInsertPoint(innermost_body_bb,
+                              innermost_body_bb->getFirstInsertionPt());
 
   // Set exit_bb_ to the exit block of the loop nest.
   exit_bb_ = loop_nest.GetOuterLoopExitBasicBlock();
@@ -122,21 +123,16 @@ std::vector<IrArray::Index> LoopEmitter::EmitIndexAndSetExitBasicBlock(
   return {array_index};
 }
 
-Status LoopEmitter::EmitLoop(tensorflow::StringPiece loop_name,
-                             llvm::Type* index_type) {
-  if (index_type == nullptr) {
-    index_type = b_->getInt64Ty();
-  }
-
+Status LoopEmitter::EmitLoop(tensorflow::StringPiece loop_name) {
   for (const IrArray::Index& array_index :
-       EmitIndexAndSetExitBasicBlock(loop_name, index_type)) {
+       EmitIndexAndSetExitBasicBlock(loop_name)) {
     TF_RETURN_IF_ERROR(body_emitter_(array_index));
   }
 
-  // Set the insertion point of b_ to the loop exit, so that
+  // Set the insertion point of ir_builder_ to the loop exit, so that
   // code emitted for later instructions will be correctly placed.
   if (exit_bb_ != nullptr) {
-    b_->SetInsertPoint(exit_bb_);
+    ir_builder_->SetInsertPoint(exit_bb_);
   }
   return Status::OK();
 }

@@ -35,7 +35,6 @@ typedef Eigen::ThreadPoolDevice CPUDevice;
 template struct FillProjectiveTransform<CPUDevice, uint8>;
 template struct FillProjectiveTransform<CPUDevice, int32>;
 template struct FillProjectiveTransform<CPUDevice, int64>;
-template struct FillProjectiveTransform<CPUDevice, Eigen::half>;
 template struct FillProjectiveTransform<CPUDevice, float>;
 template struct FillProjectiveTransform<CPUDevice, double>;
 
@@ -100,7 +99,6 @@ class ImageProjectiveTransform : public OpKernel {
 TF_CALL_uint8(REGISTER);
 TF_CALL_int32(REGISTER);
 TF_CALL_int64(REGISTER);
-TF_CALL_half(REGISTER);
 TF_CALL_float(REGISTER);
 TF_CALL_double(REGISTER);
 

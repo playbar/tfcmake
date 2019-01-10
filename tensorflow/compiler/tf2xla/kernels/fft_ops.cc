@@ -18,7 +18,6 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "tensorflow/compiler/xla/client/xla_client/xla_builder.h"
 #include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/core/framework/numeric_op.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -63,7 +62,8 @@ class GenericFftOp : public XlaOpKernel {
       }
     }
 
-    xla::XlaOp fft = xla::Fft(ctx->Input(0), fft_type_, fft_length);
+    xla::XlaBuilder* b = ctx->builder();
+    xla::XlaOp fft = b->Fft(ctx->Input(0), fft_type_, fft_length);
     ctx->SetOutput(0, fft);
   }
 

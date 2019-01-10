@@ -247,13 +247,7 @@ __global__ void SwapDimension1And2InTensor3UsingTiles(
   constexpr int ReadRowPerPass = NumThreads / TileSizeJ;
   constexpr int WriteRowPerPass = NumThreads / TileSizeI;
   // One extra line in the inner dimension to avoid share memory bank conflict.
-  // This is to mimic the following, but no constructor of T can be invoked.
-  //     __shared__ T shared_memory_tile[TileSizeI][TileSizeJ + 1];
-  __shared__ __align__(
-      alignof(T)) char shared_mem_raw[TileSizeI * (TileSizeJ + 1) * sizeof(T)];
-  typedef T(*SharedMemoryTile)[TileSizeJ + 1];
-  SharedMemoryTile shared_memory_tile =
-      reinterpret_cast<SharedMemoryTile>(shared_mem_raw);
+  __shared__ T shared_memory_tile[TileSizeI][TileSizeJ + 1];
 
   int x = threadIdx.x;
 

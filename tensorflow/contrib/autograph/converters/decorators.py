@@ -24,13 +24,18 @@ from __future__ import print_function
 
 import gast
 
-from tensorflow.contrib.autograph.core import converter
 from tensorflow.contrib.autograph.pyct import anno
-from tensorflow.python.util import tf_inspect
+from tensorflow.contrib.autograph.pyct import pretty_printer
 
 
-class DecoratorsTransformer(converter.Base):
+class DecoratorsTransformer(gast.NodeTransformer):
   """Converts or removes decorators."""
+
+  def __init__(self, remove_decorators):
+    self.remove_decorators = remove_decorators
+    self.additional_dependencies = set()
+
+  # pylint:disable=invalid-name
 
   def visit_FunctionDef(self, node):
     self.generic_visit(node)
@@ -53,53 +58,31 @@ class DecoratorsTransformer(converter.Base):
         # This is currently verified by tests.
         continue
 
-      original_dec = anno.getanno(dec_func, anno.Basic.QN)
-      dec_value = anno.getanno(dec_func, 'live_val')
-
-      if dec_value in self.ctx.program.autograph_decorators:
-        # AutoGraph decorators do not need to be preserved.
-        continue
-
-      # When using foo.bar.baz, we only really need to grab foo and import
-      # that.
-      dec_support_node = dec_func
-      while isinstance(dec_support_node, gast.Attribute):
-        dec_support_node = dec_support_node.value
-
-      if not anno.hasanno(dec_support_node, 'live_val'):
+      if not anno.hasanno(dec_func, 'live_val'):
         raise ValueError(
-            'could not resolve symbol "%s" when looking up decorator "%s"' %
-            (anno.getanno(dec_support_node, anno.Basic.QN), original_dec))
+            'Could not resolve decorator: %s' % pretty_printer.fmt(dec_func))
 
-      dec_support = anno.getanno(dec_support_node, 'live_val')
-      # The tuple contains:
-      #  * the AST that represents the decorator
-      #  * the entity supporting the decorator (i.e., what we need to import)
-      #  * the name of the module that needs to be imported for this decorator
-      #    to properly resolve.
-      # Examples:
-      #  for foo.bar, the tuple is (<ast>, <module foo>, 'foo')
-      #  for baz, the tuple is (<ast>, <module baz.__module__>, 'baz')
-      kept_decorators.append((dec, dec_support,
-                              anno.getanno(dec_support_node, anno.Basic.QN)))
+      dec_value = anno.getanno(dec_func, 'live_val')
+      if dec_value not in self.remove_decorators:
+        kept_decorators.append((dec, dec_value))
 
-    for _, dec_support, name in kept_decorators:
-      if tf_inspect.ismodule(dec_support):
-        self.ctx.program.additional_imports.add(
-            'import %s as %s' % (dec_support.__name__, name))
+    for _, dec_value in kept_decorators:
+      if dec_value.__module__ == '__main__':
+        raise ValueError(
+            'decorator "%s" was not allowed because it is declared '
+            'in the module "%s". To fix this, declare it in a separate '
+            'module that we can import it from.' % (dec_value,
+                                                    dec_value.__module__))
       else:
-        if dec_support.__module__ == '__main__':
-          raise ValueError(
-              'decorator "%s" was not allowed because it is declared '
-              'in the module "%s". To fix this, declare it in a separate '
-              'module that we can import it from.' % (dec_support,
-                                                      dec_support.__module__))
-        self.ctx.program.additional_imports.add(
-            'from %s import %s' % (dec_support.__module__, name))
+        self.additional_dependencies.add(dec_value)
 
-    node.decorator_list = [dec for dec, _, _ in kept_decorators]
+    node.decorator_list = [dec for dec, _ in kept_decorators]
     return node
 
+  # pylint:enable=invalid-name
 
-def transform(node, ctx):
-  return DecoratorsTransformer(ctx).visit(node)
+
+def transform(node, remove_decorators):
+  transformer = DecoratorsTransformer(remove_decorators)
+  node = transformer.visit(node)
+  return node, transformer.additional_dependencies

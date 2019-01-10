@@ -264,7 +264,6 @@ Status CopyElementToLargerSlice(const Tensor& element, Tensor* parent,
     HANDLE_DIMS(2);
     HANDLE_DIMS(3);
     HANDLE_DIMS(4);
-    HANDLE_DIMS(5);
 #undef HANDLE_DIMS
     default:
       return errors::Unimplemented("CopyElementToLargerSlice Unhandled rank: ",

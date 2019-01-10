@@ -18,15 +18,5 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Naming conventions:
-#  * each converter should specialize on a single idiom; be consistent with
-#    the Python reference for naming
-#  * all converters inherit core.converter.Base
-#  * module names describe the idiom that the converter covers, plural
-#  * the converter class is named consistent with the module, singular and
-#    includes the word Transformer
-#
-# Example:
-#
-#   lists.py
-#     class ListTransformer(converter.Base)
+# TODO(mdan): Define a base transformer class that can recognize skip_processing
+# TODO(mdan): All converters are incomplete, especially those that change blocks

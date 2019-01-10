@@ -202,10 +202,7 @@ def cc_proto_library(
   )
 
   if use_grpc_plugin:
-    cc_libs += select({
-        "//tensorflow:linux_s390x": ["//external:grpc_lib_unsecure"],
-        "//conditions:default": ["//external:grpc_lib"],
-    })
+    cc_libs += ["//external:grpc_lib"]
 
   if default_header:
     header_only_name = name
@@ -309,7 +306,6 @@ def tf_proto_library_cc(name, srcs = [], has_services = None,
                         cc_grpc_version = None,
                         j2objc_api_version = 1,
                         cc_api_version = 2,
-                        dart_api_version = 2,
                         java_api_version = 2, py_api_version = 2,
                         js_api_version = 2, js_codegen = "jspb",
                         default_header = False):
@@ -415,7 +411,7 @@ def tf_proto_library(name, srcs = [], has_services = None,
                      visibility = [], testonly = 0,
                      cc_libs = [],
                      cc_api_version = 2, cc_grpc_version = None,
-                     dart_api_version = 2, j2objc_api_version = 1,
+                     j2objc_api_version = 1,
                      java_api_version = 2, py_api_version = 2,
                      js_api_version = 2, js_codegen = "jspb",
                      provide_cc_alias = False,
@@ -620,10 +616,10 @@ def tf_additional_core_deps():
       ],
       "//conditions:default": [],
   }) + select({
-      "//tensorflow:with_aws_support_windows_override": [],
-      "//tensorflow:with_aws_support_android_override": [],
-      "//tensorflow:with_aws_support_ios_override": [],
-      "//tensorflow:with_aws_support": [
+      "//tensorflow:with_s3_support_windows_override": [],
+      "//tensorflow:with_s3_support_android_override": [],
+      "//tensorflow:with_s3_support_ios_override": [],
+      "//tensorflow:with_s3_support": [
           "//tensorflow/core/platform/s3:s3_file_system",
       ],
       "//conditions:default": [],

@@ -20,15 +20,11 @@ load(
     size = "large",
     srcs = ["generated_examples_zip_test.cc"],
     args = [
-    ] + select({
-        "//tensorflow:android": [],
-        "//conditions:default": [
-            "--zip_file_path=$(location :zip_%s)" % test_name,
-            # TODO(angerson) We may be able to add an external unzip binary instead
-            # of relying on an existing one for OSS builds.
-            "--unzip_binary_path=/usr/bin/unzip",
-        ],
-    }),
+        "--zip_file_path=$(location :zip_%s)" % test_name,
+        # TODO(angerson) We may be able to add an external unzip binary instead
+        # of relying on an existing one for OSS builds.
+        "--unzip_binary_path=/usr/bin/unzip",
+    ],
     data = [
         ":zip_%s" % test_name,
     ],
@@ -140,7 +136,6 @@ cc_test(
 cc_library(
     name = "join",
     hdrs = ["join.h"],
-    deps = ["//tensorflow/contrib/lite:string"],
 )
 
 cc_test(
@@ -160,7 +155,6 @@ cc_library(
     deps = [
         ":split",
         ":test_runner",
-        "//tensorflow/contrib/lite:builtin_op_data",
         "//tensorflow/contrib/lite:framework",
         "//tensorflow/contrib/lite/kernels:builtin_ops",
     ],
@@ -173,7 +167,6 @@ cc_test(
     data = ["//tensorflow/contrib/lite:testdata/multi_add.bin"],
     tags = [
         "tflite_not_portable_android",
-        "tflite_not_portable_ios",
     ],
     deps = [
         ":tflite_driver",
@@ -269,7 +262,6 @@ cc_library(
         ":join",
         ":split",
         ":tf_driver",
-        "//tensorflow/contrib/lite:string",
         "//tensorflow/core:framework",
     ],
 )
@@ -335,6 +327,7 @@ tf_cc_test(
     ],
     tags = [
         "no_cuda_on_cpu_tap",
+        "no_oss",
         "tflite_not_portable",
     ],
     deps = [

@@ -473,7 +473,7 @@ void Master::PartialRunSetup(const PartialRunSetupRequest* req,
     return;
   }
 
-  SchedClosure([session, req, resp, done]() {
+  SchedClosure([this, session, req, resp, done]() {
     Status s = session->PartialRunSetup(req, resp);
     session->Unref();
     done(s);
@@ -628,7 +628,7 @@ void Master::MakeCallable(const MakeCallableRequest* req,
   }
 
   SchedClosure(std::bind(
-      [session, req, resp](MyClosure done) {
+      [this, session, req, resp](MyClosure done) {
         Status s = session->MakeCallable(*req, resp);
         session->Unref();
         done(s);
@@ -645,7 +645,7 @@ void Master::RunCallable(CallOptions* opts, const RunCallableRequest* req,
   }
 
   SchedClosure(std::bind(
-      [session, opts, req, resp](MyClosure done) {
+      [this, session, opts, req, resp](MyClosure done) {
         Status s = session->RunCallable(opts, *req, resp);
         session->Unref();
         done(s);
@@ -662,7 +662,7 @@ void Master::ReleaseCallable(const ReleaseCallableRequest* req,
   }
 
   SchedClosure(std::bind(
-      [session, req, resp](MyClosure done) {
+      [this, session, req, resp](MyClosure done) {
         Status s = session->ReleaseCallable(*req, resp);
         session->Unref();
         done(s);

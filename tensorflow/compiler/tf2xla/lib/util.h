@@ -23,6 +23,9 @@ limitations under the License.
 
 namespace tensorflow {
 
+// Returns a zero-filled tensor with shape `shape`.
+xla::XlaOp Zeros(xla::XlaBuilder* builder, const xla::Shape& shape);
+
 // Returns a floating point scalar constant of 'type' with 'value'.
 // If 'type' is complex, returns a real value with zero imaginary component.
 xla::XlaOp FloatLiteral(xla::XlaBuilder* builder, xla::PrimitiveType type,
@@ -30,7 +33,7 @@ xla::XlaOp FloatLiteral(xla::XlaBuilder* builder, xla::PrimitiveType type,
 
 // Makes a 1D tensor [0, ..., x, y] from two tensors x and y with zeros
 // prepended until the array is length n_dims.
-xla::XlaOp PrependZerosInMajorDims(xla::XlaOp x,
+xla::XlaOp PrependZerosInMajorDims(xla::XlaBuilder* builder,
                                    gtl::ArraySlice<xla::XlaOp> starts);
 
 // Returns a integer scalar constant of 'type' with 'value'.
@@ -38,43 +41,54 @@ xla::XlaOp PrependZerosInMajorDims(xla::XlaOp x,
 xla::XlaOp IntegerLiteral(xla::XlaBuilder* builder, xla::PrimitiveType type,
                           int64 value);
 
-// Builds a vector of zeros of length rank(x) with the last values being
+// Builds a vector of zeros of length rank(x) with the last two values being
 // those in `starts`.
-xla::XlaOp PrependZerosInMajorDims(xla::XlaOp x,
-                                   gtl::ArraySlice<xla::XlaOp> starts);
+xla::StatusOr<xla::XlaOp> PrependZerosInMajorDims(
+    xla::XlaBuilder* builder, const xla::XlaOp& x,
+    const std::vector<xla::XlaOp>& starts);
 
 // Performs a slice in the minor dimensions of a Tensor.
-xla::XlaOp SliceInMinorDims(xla::XlaOp x, gtl::ArraySlice<int64> start,
-                            gtl::ArraySlice<int64> end);
+xla::StatusOr<xla::XlaOp> SliceInMinorDims(xla::XlaBuilder* builder,
+                                           const xla::XlaOp& x,
+                                           gtl::ArraySlice<int64> start,
+                                           gtl::ArraySlice<int64> end);
 
-// Returns the concatenation of `xs` and `ys`.
-std::vector<int64> ConcatVectors(gtl::ArraySlice<int64> xs,
-                                 gtl::ArraySlice<int64> ys);
+// Builds a 1-d vector out of a concatenation of `major_dims` and `starts`.
+std::vector<int64> PrependMajorDims(xla::XlaBuilder* builder,
+                                    const gtl::ArraySlice<int64>& major_dims,
+                                    const gtl::ArraySlice<int64>& indices);
 
 // Performs a dynamic slice in the minor dimensions of a Tensor.
-xla::XlaOp DynamicSliceInMinorDims(xla::XlaOp x,
-                                   gtl::ArraySlice<xla::XlaOp> starts,
-                                   gtl::ArraySlice<int64> sizes);
+xla::StatusOr<xla::XlaOp> DynamicSliceInMinorDims(
+    xla::XlaBuilder* builder, const xla::XlaOp& x,
+    const std::vector<xla::XlaOp>& starts, const gtl::ArraySlice<int64>& sizes);
 
 // Updates a slice of 'x', i.e.,
 // x[start[0], ..., start[n]] = update
-xla::XlaOp UpdateSlice(xla::XlaOp x, xla::XlaOp update,
-                       gtl::ArraySlice<int64> start);
+xla::StatusOr<xla::XlaOp> UpdateSlice(xla::XlaBuilder* builder,
+                                      const xla::XlaOp& x,
+                                      const xla::XlaOp& update,
+                                      gtl::ArraySlice<int64> start);
 
 // Updates a slice of 'x', where 'start' contains a list of minor dimensions:
 // x[..., start[0], ..., start[n]] = update
-xla::XlaOp UpdateSliceInMinorDims(xla::XlaOp x, xla::XlaOp update,
-                                  gtl::ArraySlice<int64> start);
+xla::StatusOr<xla::XlaOp> UpdateSliceInMinorDims(xla::XlaBuilder* builder,
+                                                 const xla::XlaOp& x,
+                                                 const xla::XlaOp& update,
+                                                 gtl::ArraySlice<int64> start);
 
-xla::XlaOp DynamicUpdateSliceInMinorDims(xla::XlaOp x, xla::XlaOp update,
-                                         gtl::ArraySlice<xla::XlaOp> starts);
+xla::StatusOr<xla::XlaOp> DynamicUpdateSliceInMinorDims(
+    xla::XlaBuilder* builder, const xla::XlaOp& x, const xla::XlaOp& update,
+    const std::vector<xla::XlaOp>& starts);
 
 // Transposes a stack of matrices `x` by swapping the last two dimensions.
-xla::XlaOp TransposeInMinorDims(xla::XlaOp x);
+xla::StatusOr<xla::XlaOp> TransposeInMinorDims(xla::XlaBuilder* builder,
+                                               const xla::XlaOp& x);
 
 // Applies a complex conjugation operation if `a` is complex and `conjugate_a`
 // is true, otherwise returns its argument.
-xla::XlaOp MaybeConjugate(xla::XlaOp x, bool conjugate);
+xla::StatusOr<xla::XlaOp> MaybeConjugate(xla::XlaBuilder* builder,
+                                         const xla::XlaOp& x, bool conjugate);
 
 }  // namespace tensorflow
 

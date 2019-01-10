@@ -30,6 +30,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/hlo_module.h"
 #include "tensorflow/compiler/xla/service/hlo_module_config.h"
 #include "tensorflow/compiler/xla/service/platform_util.h"
+#include "tensorflow/compiler/xla/service/versioned_computation_handle.h"
 #include "tensorflow/compiler/xla/shape_layout.h"
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/status_macros.h"
@@ -107,11 +108,6 @@ ExecutionOptions CreateExecutionOptions(
         ->set_xla_dump_optimized_hlo_proto_to(
             build_options.dump_optimized_hlo_proto_to().value());
   }
-  if (build_options.dump_unoptimized_hlo_proto_to().has_value()) {
-    execution_options.mutable_debug_options()
-        ->set_xla_dump_unoptimized_hlo_proto_to(
-            build_options.dump_unoptimized_hlo_proto_to().value());
-  }
   if (build_options.dump_per_pass_hlo_proto_to().has_value()) {
     execution_options.mutable_debug_options()
         ->set_xla_dump_per_pass_hlo_proto_to(
@@ -154,8 +150,7 @@ StatusOr<std::unique_ptr<Executable>> LocalService::CompileExecutable(
 
   for (int i = 0; i < argument_layouts.size(); ++i) {
     const Shape& argument_shape = *argument_layouts[i];
-    TF_RETURN_IF_ERROR(
-        ShapeUtil::ValidateShapeWithOptionalLayout(argument_shape));
+    TF_RETURN_IF_ERROR(ShapeUtil::ValidateShape(argument_shape));
     if (!ShapeUtil::Compatible(argument_shape, program_shape.parameters(i))) {
       tensorflow::gtl::optional<const OpMetadata*> metadata =
           ParameterMetadata(computation, /*parameter_number=*/i);
@@ -179,8 +174,8 @@ StatusOr<std::unique_ptr<Executable>> LocalService::CompileExecutable(
     }
   }
   if (build_options.result_layout() != nullptr) {
-    TF_RETURN_IF_ERROR(ValidateResultShape(*build_options.result_layout(),
-                                           program_shape.result()));
+    TF_RETURN_IF_ERROR(ValidateResultShapeWithLayout(
+        *build_options.result_layout(), program_shape.result()));
   }
 
   ExecutionOptions execution_options =
@@ -189,9 +184,6 @@ StatusOr<std::unique_ptr<Executable>> LocalService::CompileExecutable(
   TF_ASSIGN_OR_RETURN(
       std::unique_ptr<HloModuleConfig> module_config,
       CreateModuleConfig(program_shape, argument_layouts, &execution_options));
-
-  VLOG(3) << "Computation Layout: "
-          << module_config->entry_computation_layout().ToString();
 
   TF_ASSIGN_OR_RETURN(
       se::StreamExecutor * executor,

@@ -14,7 +14,6 @@
 # ==============================================================================
 """Ops and modules related to batch.
 
-@@batch_function_v1
 @@batch_function
 """
 from __future__ import absolute_import

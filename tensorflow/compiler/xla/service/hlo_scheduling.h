@@ -28,6 +28,20 @@ limitations under the License.
 
 namespace xla {
 
+// Returns the minimum memory required to compute the given module sequence,
+// assuming no fragmentation.
+StatusOr<int64> MinimumMemoryForSequence(
+    const SequentialHloOrdering::HloModuleSequence& module_sequence,
+    const LogicalBuffer::SizeFunction& size_function);
+
+// Returns the minimum memory required to compute the given computation,
+// assuming no fragmentation.
+StatusOr<int64> MinimumMemoryForComputation(
+    const HloComputation& computation,
+    const std::vector<const HloInstruction*>& sequence,
+    const TuplePointsToAnalysis& points_to_analysis,
+    const LogicalBuffer::SizeFunction& size_function);
+
 // A memory scheduler computes an execution sequence for the HLO instructions in
 // 'computation' that minimizes peak memory, given a points-to analysis result
 // that describes buffer aliasing, together with a target-specific size function
@@ -75,13 +89,14 @@ StatusOr<std::vector<const HloInstruction*>> DefaultMemoryScheduler(
 // Returns an HloModuleSequence which seeks to minimize the memory required for
 // the computation. size_function is the function returning the number of bytes
 // required for a LogicalBuffer.
-StatusOr<SequentialHloOrdering::HloModuleSequence> ScheduleComputationsInModule(
-    const HloModule& module, const LogicalBuffer::SizeFunction& size_function,
-    const MemorySchedulerAlgorithm& algorithm = {});
+StatusOr<SequentialHloOrdering::HloModuleSequence>
+CreateMemoryMinimizingSequence(const HloModule& module,
+                               const LogicalBuffer::SizeFunction& size_function,
+                               const MemorySchedulerAlgorithm& algorithm = {});
 
-// Computes the schedule for a single computation.
+// Overload of above that computes the sequence for a single computation.
 // Currently only used by the GPU backend.
-StatusOr<std::vector<const HloInstruction*>> ScheduleOneComputation(
+StatusOr<std::vector<const HloInstruction*>> CreateMemoryMinimizingSequence(
     const HloComputation& computation,
     const LogicalBuffer::SizeFunction& size_function);
 

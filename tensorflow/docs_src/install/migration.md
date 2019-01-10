@@ -1,4 +1,5 @@
-# Transition to TensorFlow 1.0
+
+# Transitioning to TensorFlow 1.0
 
 
 The APIs in TensorFlow 1.0 have changed in ways that are not all backwards

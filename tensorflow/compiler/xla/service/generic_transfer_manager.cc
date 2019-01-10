@@ -20,7 +20,7 @@ limitations under the License.
 #include <vector>
 
 #include "tensorflow/compiler/xla/layout_util.h"
-#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/compiler/xla/service/interpreter/platform_id.h"
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/status_macros.h"
@@ -43,7 +43,7 @@ se::Platform::Id GenericTransferManager::PlatformId() const {
 }
 
 Status GenericTransferManager::WriteSingleTupleIndexTable(
-    se::Stream* stream,
+    se::StreamExecutor* executor,
     tensorflow::gtl::ArraySlice<se::DeviceMemoryBase> elements,
     const Shape& shape, se::DeviceMemoryBase* region) {
   TF_RET_CHECK(elements.size() == ShapeUtil::TupleElementCount(shape));
@@ -52,24 +52,12 @@ Status GenericTransferManager::WriteSingleTupleIndexTable(
   for (const se::DeviceMemoryBase& element : elements) {
     element_pointers.push_back(element.opaque());
   }
-  TF_RETURN_IF_ERROR(TransferBufferToDevice(
-      stream, GetByteSizeRequirement(shape), element_pointers.data(), region));
-  // Ensure the buffer is transferred before we destroy element_pointers.
-  return stream->BlockHostUntilDone();
-}
-
-void GenericTransferManager::TransferLiteralFromDevice(
-    se::Stream* stream, const ShapedBuffer& device_buffer,
-    std::function<void(StatusOr<std::unique_ptr<Literal>>)> done) {
-  Status status = stream->BlockHostUntilDone();
-  if (!status.ok()) {
-    return done(status);
-  }
-  done(TransferLiteralFromDeviceInternal(stream->parent(), device_buffer));
+  return TransferBufferToDevice(executor, GetByteSizeRequirement(shape),
+                                element_pointers.data(), region);
 }
 
 StatusOr<std::unique_ptr<Literal>>
-GenericTransferManager::TransferLiteralFromDeviceInternal(
+GenericTransferManager::TransferLiteralFromDevice(
     se::StreamExecutor* executor, const ShapedBuffer& device_buffer) {
   VLOG(2) << "transferring literal from device ordinal "
           << executor->device_ordinal() << "; device buffer: " << device_buffer;
@@ -86,8 +74,9 @@ GenericTransferManager::TransferLiteralFromDeviceInternal(
   TF_RETURN_IF_ERROR(ShapeUtil::ForEachSubshapeWithStatus(
       device_buffer.on_host_shape(),
       [&](const Shape& subshape, const ShapeIndex& index) -> Status {
-        if (ShapeUtil::IsArray(subshape)) {
-          TF_RETURN_IF_ERROR(executor->SynchronousMemcpyD2H(
+        if (!ShapeUtil::IsTuple(subshape)) {
+          TF_RETURN_IF_ERROR(TransferBufferFromDevice(
+              executor,
               /*source=*/device_buffer.buffer(index),
               /*size=*/GetByteSizeRequirement(subshape),
               /*destination=*/
@@ -99,8 +88,8 @@ GenericTransferManager::TransferLiteralFromDeviceInternal(
   return std::move(literal);
 }
 
-Status GenericTransferManager::TransferLiteralToDeviceAsync(
-    se::Stream* stream, const LiteralSlice& literal,
+Status GenericTransferManager::TransferLiteralToDevice(
+    se::StreamExecutor* executor, const LiteralSlice& literal,
     const ShapedBuffer& device_buffer) {
   const Shape& shape = literal.shape();
   VLOG(2) << "transferring literal shape to device: "
@@ -114,10 +103,9 @@ Status GenericTransferManager::TransferLiteralToDeviceAsync(
 
   TF_RET_CHECK(
       ShapeUtil::Compatible(literal.shape(), device_buffer.on_host_shape()));
-  TF_RET_CHECK(stream->parent()->device_ordinal() ==
-               device_buffer.device_ordinal());
+  TF_RET_CHECK(executor->device_ordinal() == device_buffer.device_ordinal());
 
-  TF_RETURN_IF_ERROR(WriteTupleIndexTables(stream, device_buffer));
+  TF_RETURN_IF_ERROR(WriteTupleIndexTables(executor, device_buffer));
 
   return ShapeUtil::ForEachSubshapeWithStatus(
       device_buffer.on_host_shape(),
@@ -133,21 +121,16 @@ Status GenericTransferManager::TransferLiteralToDeviceAsync(
           if (LayoutUtil::Equal(device_subshape.layout(),
                                 subliteral.shape().layout())) {
             source = subliteral.untyped_data();
-            return TransferBufferToDevice(
-                stream,
-                /*size=*/GetByteSizeRequirement(device_subshape), source,
-                &device_memory);
           } else {
             // Relayout data before transferring.
             relayed_out_literal = subliteral.Relayout(device_subshape.layout(),
                                                       /*shape_index=*/{});
             source = relayed_out_literal->untyped_data();
-            TF_RETURN_IF_ERROR(TransferBufferToDevice(
-                stream,
-                /*size=*/GetByteSizeRequirement(device_subshape), source,
-                &device_memory));
-            return stream->BlockHostUntilDone();
           }
+          return TransferBufferToDevice(
+              executor,
+              /*size=*/GetByteSizeRequirement(device_subshape), source,
+              &device_memory);
         }
         return Status::OK();
       });
@@ -158,10 +141,16 @@ Status GenericTransferManager::TransferLiteralToInfeed(
   return Unimplemented("Generic transfer to Infeed");
 }
 
+Status GenericTransferManager::TransferBufferToInfeed(
+    se::StreamExecutor* executor, int64 size, const void* source) {
+  return Unimplemented("Generic transfer to Infeed");
+}
+
 Status GenericTransferManager::TransferLiteralFromOutfeed(
     se::StreamExecutor* executor, const Shape& literal_shape,
     Literal* literal) {
-  return Unimplemented("Generic transfer from Outfeed");
+  return Unimplemented(
+      "Outfeed is not supported on this platform (b/30467474)");
 }
 
 Status GenericTransferManager::ResetDevices(

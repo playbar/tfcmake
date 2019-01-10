@@ -21,14 +21,14 @@ from __future__ import print_function
 import itertools
 import numpy as np
 
-from tensorflow.compiler.tests import xla_test
+from tensorflow.compiler.tests.xla_test import XLATestCase
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import array_ops
 from tensorflow.python.platform import googletest
 
 
-class ReverseOpsTest(xla_test.XLATestCase):
+class ReverseOpsTest(XLATestCase):
 
   def testReverseOneDim(self):
     shape = (7, 5, 9, 11)

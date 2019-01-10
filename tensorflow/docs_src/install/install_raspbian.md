@@ -1,4 +1,4 @@
-# Install TensorFlow on Raspbian
+# Installing TensorFlow on Raspbian
 
 This guide explains how to install TensorFlow on a Raspberry Pi running
 Raspbian. Although these instructions might also work on other Pi variants, we

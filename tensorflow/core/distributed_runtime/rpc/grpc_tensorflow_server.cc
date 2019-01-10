@@ -16,9 +16,9 @@ limitations under the License.
 #include <iostream>
 #include <vector>
 
-#include "grpcpp/grpcpp.h"
-#include "grpcpp/security/credentials.h"
-#include "grpcpp/server_builder.h"
+#include "grpc++/grpc++.h"
+#include "grpc++/security/credentials.h"
+#include "grpc++/server_builder.h"
 
 #include "tensorflow/core/distributed_runtime/server_lib.h"
 

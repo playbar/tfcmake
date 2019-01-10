@@ -106,7 +106,7 @@ class PrintModelAnalysisTest(test.TestCase):
               # Make sure time is profiled.
               gap = 1 if test.is_gpu_available() else 2
               for i in range(3, 6, gap):
-                mat = re.search('(.*)(?:us|ms|sec)/(.*)(?:us|ms|sec)', metrics[i])
+                mat = re.search('(.*)[um]s/(.*)[um]s', metrics[i])
                 self.assertGreater(float(mat.group(1)), 0.0)
                 self.assertGreater(float(mat.group(2)), 0.0)
               # Make sure device is profiled.
@@ -707,10 +707,8 @@ class PrintModelAnalysisTest(test.TestCase):
     a = array_ops.constant(np.ones((100, 100)))
     b = array_ops.constant(np.ones((100, 100)))
     c = a * b
-    config = config_pb2.ConfigProto()
-    config.graph_options.rewrite_options.min_graph_nodes = -1
 
-    with session.Session(config=config) as sess:
+    with session.Session() as sess:
       run_options = config_pb2.RunOptions(
           trace_level=config_pb2.RunOptions.FULL_TRACE)
       run_metadata = config_pb2.RunMetadata()

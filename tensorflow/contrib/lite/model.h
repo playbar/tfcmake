@@ -156,7 +156,6 @@ class InterpreterBuilder {
   InterpreterBuilder(const ::tflite::Model* model,
                      const OpResolver& op_resolver,
                      ErrorReporter* error_reporter = DefaultErrorReporter());
-  ~InterpreterBuilder();
   InterpreterBuilder(const InterpreterBuilder&) = delete;
   InterpreterBuilder& operator=(const InterpreterBuilder&) = delete;
   TfLiteStatus operator()(std::unique_ptr<Interpreter>* interpreter);

@@ -158,7 +158,6 @@ def _get_config(layout_optimizer=True):
         layout_optimizer=rewriter_config_pb2.RewriterConfig.OFF,
         # do not remove duplicated nodes
         arithmetic_optimization=rewriter_config_pb2.RewriterConfig.OFF)
-  rewrite_options.min_graph_nodes = -1
   graph_options = config_pb2.GraphOptions(
       rewrite_options=rewrite_options, build_cost_model=1)
   config = config_pb2.ConfigProto(graph_options=graph_options)
@@ -1340,7 +1339,7 @@ class LayoutOptimizerTest(test.TestCase):
       expected_num_transposes = 2
       self.assertEqual(expected_num_transposes, num_transposes)
       self._assert_trans_nhwc_to_nchw('Conv2D-0', nodes)
-      self.assertAllClose(output_val_ref, output_val, atol=1e-3)
+      self.assertAllEqual(output_val_ref, output_val)
 
   def testLoop(self):
     if test.is_gpu_available(cuda_only=True):
@@ -1444,8 +1443,7 @@ class LayoutOptimizerTest(test.TestCase):
   def testGradient(self):
     meta_graph = _simple_metagraph()
     rewrite_options = rewriter_config_pb2.RewriterConfig(
-        layout_optimizer=rewriter_config_pb2.RewriterConfig.ON,
-        min_graph_nodes=-1)
+        layout_optimizer=rewriter_config_pb2.RewriterConfig.ON)
     optimized_graph = tf_optimizer.OptimizeGraph(
         rewrite_options, meta_graph, cluster=_get_cluster())
 
@@ -1459,8 +1457,7 @@ class LayoutOptimizerTest(test.TestCase):
   def testDepthwise(self):
     meta_graph = _simple_metagraph(depthwise=True)
     rewrite_options = rewriter_config_pb2.RewriterConfig(
-        layout_optimizer=rewriter_config_pb2.RewriterConfig.ON,
-        min_graph_nodes=-1)
+        layout_optimizer=rewriter_config_pb2.RewriterConfig.ON)
     optimized_graph = tf_optimizer.OptimizeGraph(
         rewrite_options, meta_graph, cluster=_get_cluster())
 

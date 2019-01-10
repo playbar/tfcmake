@@ -270,6 +270,7 @@ class OperationTest(test_util.TensorFlowTestCase):
     op1 = ops.Operation(
         ops._NodeDef("RefOutputFloatOutput", "op1"), g, [],
         [dtypes.float32_ref, dtypes.float32])
+    g._add_op(op1)
     self.assertProtoEquals("op:'RefOutputFloatOutput' name:'op1'", op1.node_def)
     self.assertEquals([], list(op1.inputs))
     ref_t, nonref_t = op1.values()
@@ -278,12 +279,14 @@ class OperationTest(test_util.TensorFlowTestCase):
         ops._NodeDef("RefInputFloatInput", "op2"),
         g, [ref_t, nonref_t], [],
         input_types=[dtypes.float32_ref, dtypes.float32])
+    g._add_op(op2)
     self.assertProtoEquals(
         "op:'RefInputFloatInput' name:'op2' input:'op1' input:'op1:1'",
         op2.node_def)
     self.assertEquals([ref_t, nonref_t], list(op2.inputs))
     op3 = ops.Operation(
         ops._NodeDef("TwoFloatInputs", "op3"), g, [ref_t, nonref_t], [])
+    g._add_op(op3)
     self.assertProtoEquals(
         "op:'TwoFloatInputs' name:'op3' input:'op1' input:'op1:1'",
         op3.node_def)
@@ -1690,7 +1693,7 @@ class ControlDependenciesTest(test_util.TensorFlowTestCase):
     # e should be dominated by c.
     self.assertEqual(e.op.control_inputs, [])
 
-  @test_util.run_in_graph_and_eager_modes
+  @test_util.run_in_graph_and_eager_modes()
   def testEager(self):
     def future():
       future.calls += 1
@@ -1875,7 +1878,7 @@ class ControlDependenciesTest(test_util.TensorFlowTestCase):
 
 class OpScopeTest(test_util.TensorFlowTestCase):
 
-  @test_util.run_in_graph_and_eager_modes
+  @test_util.run_in_graph_and_eager_modes()
   def testNames(self):
     with ops.name_scope("foo") as foo:
       self.assertEqual("foo/", foo)
@@ -1906,7 +1909,7 @@ class OpScopeTest(test_util.TensorFlowTestCase):
     with ops.name_scope("a//b/c") as foo10:
       self.assertEqual("a//b/c/", foo10)
 
-  @test_util.run_in_graph_and_eager_modes
+  @test_util.run_in_graph_and_eager_modes()
   def testEagerDefaultScopeName(self):
     with ops.name_scope(None, "default") as scope:
       self.assertEqual(scope, "default/")
@@ -2553,14 +2556,6 @@ class ColocationGroupTest(test_util.TensorFlowTestCase):
     self.assertEqual([b"loc:@a"], b.op.colocation_groups())
     with self.assertRaises(ValueError):
       c.op.get_attr("_class")
-
-    # Roughly test that stack information is being saved correctly for the op.
-    locations_dict = b.op._colocation_dict
-    self.assertIn("a", locations_dict)
-    metadata = locations_dict["a"]
-    self.assertIsNone(metadata.obj)
-    basename = metadata.filename.split("/")[-1]
-    self.assertEqual("ops_test.py", basename)
 
   def testColocationDeviceInteraction(self):
     with ops.device("/cpu:0"):

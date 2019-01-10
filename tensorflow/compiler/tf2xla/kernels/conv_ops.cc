@@ -18,8 +18,6 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "tensorflow/compiler/xla/client/lib/numeric.h"
-#include "tensorflow/compiler/xla/client/xla_client/xla_builder.h"
 #include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/core/framework/numeric_op.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -53,8 +51,8 @@ xla::XlaOp CreateExpandedZero(const TensorShape& filter_shape, DataType dtype,
                               xla::XlaBuilder* builder) {
   TensorShape expanded_filter_shape =
       ExpandedFilterShapeForDepthwiseConvolution(filter_shape);
-  return xla::Broadcast(XlaHelpers::Zero(builder, dtype),
-                        expanded_filter_shape.dim_sizes());
+  return builder->Broadcast(XlaHelpers::Zero(builder, dtype),
+                            expanded_filter_shape.dim_sizes());
 }
 
 // Create a mask for depthwise convolution that will make a normal convolution
@@ -97,27 +95,32 @@ xla::XlaOp CreateExpandedFilterMask(const TensorShape& filter_shape,
 
   // Create a M sized linspace and an M*N sized linspace that will be
   // broadcasted into perpendicular dimensions and compared.
-  xla::XlaOp input_feature_iota = xla::Iota(builder, xla::S32, input_feature);
-  xla::XlaOp expanded_feature_iota =
-      xla::Iota(builder, xla::S32, input_feature * depthwise_multiplier);
+  xla::XlaOp input_feature_iota;
+  // DT_INT32 Iota will always return status::OK().
+  TF_CHECK_OK(XlaHelpers::Iota(builder, DataType::DT_INT32, input_feature,
+                               &input_feature_iota));
+  xla::XlaOp expanded_feature_iota;
+  TF_CHECK_OK(XlaHelpers::Iota(builder, DataType::DT_INT32,
+                               input_feature * depthwise_multiplier,
+                               &expanded_feature_iota));
 
   // Divide the M*N sized linspace by the depthwise_multiplier to create
   // [0 0 1 1 2 2] in the example in the function comment.
   expanded_feature_iota =
-      xla::Div(expanded_feature_iota,
-               XlaHelpers::IntegerLiteral(builder, DataType::DT_INT32,
-                                          depthwise_multiplier));
+      builder->Div(expanded_feature_iota,
+                   XlaHelpers::IntegerLiteral(builder, DataType::DT_INT32,
+                                              depthwise_multiplier));
 
   // Broadcast the N*M linspace to [H, W, ..., M, M*N].
   auto expanded_feature_broadcast_dims = expanded_filter_shape.dim_sizes();
   expanded_feature_broadcast_dims.pop_back();
-  auto broadcasted_expanded_feature_iota =
-      xla::Broadcast(expanded_feature_iota, expanded_feature_broadcast_dims);
+  auto broadcasted_expanded_feature_iota = builder->Broadcast(
+      expanded_feature_iota, expanded_feature_broadcast_dims);
 
   // Compare the broadcasted linspace to the input feature linspace in the
   // input feature dimension to create a diagonal predicate.
-  return xla::Eq(broadcasted_expanded_feature_iota, input_feature_iota,
-                 {expanded_filter_shape.dims() - 2});
+  return builder->Eq(broadcasted_expanded_feature_iota, input_feature_iota,
+                     {expanded_filter_shape.dims() - 2});
 }
 
 // Expands a filter of shape [H, W, ..., M, N] to [H, W, ..., M, M*N] by adding
@@ -139,16 +142,16 @@ xla::XlaOp ExpandFilterForDepthwiseConvolution(const TensorShape& filter_shape,
       implicit_broadcast_filter_shape.dims() - 1,
       depthwise_multiplier * input_feature);
   auto implicit_broadcast_filter =
-      xla::Reshape(filter, implicit_broadcast_filter_shape.dim_sizes());
+      builder->Reshape(filter, implicit_broadcast_filter_shape.dim_sizes());
 
   // Broadcast the filter to  [H, W, ..., M, M*N].
   auto expanded_zero = CreateExpandedZero(filter_shape, dtype, builder);
-  auto expanded_filter = xla::Add(implicit_broadcast_filter, expanded_zero);
+  auto expanded_filter = builder->Add(implicit_broadcast_filter, expanded_zero);
 
   // If the filter mask is set, choose the broadcasted filter, othwerwise,
   // choose zero.
-  return xla::Select(CreateExpandedFilterMask(filter_shape, builder),
-                     expanded_filter, expanded_zero);
+  return builder->Select(CreateExpandedFilterMask(filter_shape, builder),
+                         expanded_filter, expanded_zero);
 }
 
 // Inverse of ExpandFilterForDepthwiseConvolution.
@@ -159,17 +162,17 @@ xla::XlaOp ContractFilterForDepthwiseBackprop(XlaOpKernelContext* ctx,
                                               xla::XlaBuilder* builder) {
   TensorShape expanded_filter_shape =
       ExpandedFilterShapeForDepthwiseConvolution(filter_shape);
-  auto masked_expanded_filter = xla::Select(
+  auto masked_expanded_filter = builder->Select(
       CreateExpandedFilterMask(filter_shape, builder), filter_backprop,
       CreateExpandedZero(filter_shape, dtype, builder));
-  return xla::Reshape(
+  return builder->Reshape(
       // This reduce does not need inputs to be converted with
       // XlaHelpers::SumAccumulationType() since the ExpandedFilterMask with
       // ExpandedZero guarantees that only one element is non zero, so there
       // cannot be accumulated precision error.
-      xla::Reduce(masked_expanded_filter, XlaHelpers::Zero(builder, dtype),
-                  *ctx->GetOrCreateAdd(dtype),
-                  {expanded_filter_shape.dims() - 2}),
+      builder->Reduce(masked_expanded_filter, XlaHelpers::Zero(builder, dtype),
+                      *ctx->GetOrCreateAdd(dtype),
+                      {expanded_filter_shape.dims() - 2}),
       filter_shape.dim_sizes());
 }
 
@@ -286,8 +289,8 @@ class ConvOp : public XlaOpKernel {
     }
 
     xla::XlaOp conv =
-        xla::ConvGeneralDilated(ctx->Input(0), filter, window_strides, padding,
-                                lhs_dilation, rhs_dilation, dims);
+        b->ConvGeneralDilated(ctx->Input(0), filter, window_strides, padding,
+                              lhs_dilation, rhs_dilation, dims);
     ctx->SetOutput(0, conv);
   }
 
@@ -432,11 +435,11 @@ class ConvBackpropInputOp : public XlaOpKernel {
     }
 
     // Mirror the filter in the spatial dimensions.
-    xla::XlaOp mirrored_weights = xla::Rev(filter, kernel_spatial_dims);
+    xla::XlaOp mirrored_weights = b->Rev(filter, kernel_spatial_dims);
 
     // activation gradients
     //   = gradients (with padding and dilation) <conv> mirrored_weights
-    xla::XlaOp in_backprop = xla::ConvGeneralDilated(
+    xla::XlaOp in_backprop = b->ConvGeneralDilated(
         out_backprop, mirrored_weights, /*window_strides=*/ones, padding,
         lhs_dilation, rhs_dilation, dnums);
 
@@ -635,8 +638,8 @@ class ConvBackpropFilterOp : public XlaOpKernel {
     // This is done by specifying the window dilation factors in the
     // convolution HLO below.
     auto filter_backprop =
-        xla::ConvGeneralDilated(activations, gradients, window_strides, padding,
-                                /*lhs_dilation=*/ones, rhs_dilation, dnums);
+        b->ConvGeneralDilated(activations, gradients, window_strides, padding,
+                              /*lhs_dilation=*/ones, rhs_dilation, dnums);
 
     if (depthwise_) {
       filter_backprop = ContractFilterForDepthwiseBackprop(

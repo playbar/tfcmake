@@ -32,8 +32,7 @@ class ScopedAllocatorOptimizer;
 // movement and consolidate some kinds of Ops.
 class ScopedAllocatorOptimizer : public GraphOptimizer {
  public:
-  ScopedAllocatorOptimizer(RewriterConfig::Toggle opt_level,
-                           const ScopedAllocatorOptions& opts);
+  explicit ScopedAllocatorOptimizer(const ScopedAllocatorOptions& opts);
   ~ScopedAllocatorOptimizer() override;
 
   string name() const override { return "scoped_allocator_optimizer"; }

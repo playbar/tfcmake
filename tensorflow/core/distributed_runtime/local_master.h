@@ -79,7 +79,7 @@ class LocalMaster : public MasterInterface {
                      RunCallableResponse* response) override;
   Status ReleaseCallable(CallOptions* call_options,
                          const ReleaseCallableRequest* request,
-                         ReleaseCallableResponse* response) override;
+                         ReleaseCallableResponse* response);
 
   // Registers the mapping from the given `target` to the given `master`.
   //

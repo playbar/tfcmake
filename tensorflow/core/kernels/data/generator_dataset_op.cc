@@ -197,9 +197,6 @@ class GeneratorDatasetOp : public DatasetOpKernel {
 
 REGISTER_KERNEL_BUILDER(Name("GeneratorDataset").Device(DEVICE_CPU),
                         GeneratorDatasetOp);
-REGISTER_KERNEL_BUILDER(
-    Name("GeneratorDataset").Device(DEVICE_GPU).HostMemory("handle"),
-    GeneratorDatasetOp);
 
 }  // namespace
 

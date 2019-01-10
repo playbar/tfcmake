@@ -7,10 +7,6 @@ package(
 load("//tensorflow/compiler/aot:tfcompile.bzl", "tf_library")
 load("//tensorflow:tensorflow.bzl", "tf_cc_test")
 
-# We disable some tfcompile tests in the open source build with the
-# "manual" tag to avoid making our OSS users build LLVM twice
-# (once for host and once for target).
-
 test_suite(
     name = "all_tests",
     tags = ["manual"],

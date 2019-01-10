@@ -26,12 +26,12 @@ from collections import namedtuple
 
 import gast
 
-from tensorflow.contrib.autograph.core import converter
 from tensorflow.contrib.autograph.pyct import anno
 from tensorflow.contrib.autograph.pyct import ast_util
 from tensorflow.contrib.autograph.pyct import inspect_utils
 from tensorflow.contrib.autograph.pyct import parser
 from tensorflow.contrib.autograph.pyct import templates
+from tensorflow.contrib.autograph.pyct import transformer
 from tensorflow.python.util import tf_inspect
 
 
@@ -43,9 +43,6 @@ class FunctionInfo(namedtuple('FunctionInfo', ('dtype',))):
 KNOWN_NUMPY_FUNCTIONS = {
     ('numpy', 'random', 'binomial'): FunctionInfo(dtype='tf.int64'),
 }
-
-
-# TODO(mdan): Get rid of these interfaces. Can now depend directly on Namer.
 
 
 class FunctionNamer(object):
@@ -79,18 +76,20 @@ class FunctionNamer(object):
     raise NotImplementedError()
 
 
-# TODO(mdan): Rename to CallsTransformer.
-
-
-class CallTreeTransformer(converter.Base):
+class CallTreeTransformer(transformer.Base):
   """Transforms the call tree by renaming transformed symbols."""
+
+  def __init__(self, context, uncompiled_modules, nocompile_decorators):
+    super(CallTreeTransformer, self).__init__(context)
+    self.uncompiled_modules = uncompiled_modules
+    self.nocompile_decorators = nocompile_decorators
 
   def _resolve_name(self, node):
     """Used to resolve decorator info."""
     if isinstance(node, gast.Call):
       return self._resolve_name(node.func)
     if isinstance(node, gast.Name):
-      return self.ctx.namespace.get(node.id)
+      return self.context.namespace.get(node.id)
     if isinstance(node, gast.Attribute):
       parent = self._resolve_name(node.value)
       if parent is not None:
@@ -120,12 +119,12 @@ class CallTreeTransformer(converter.Base):
     """Determines whether an entity should be compiled in the context."""
     # TODO(mdan): Needs cleanup. We should remove the use of fqn altogether.
     module_name = fqn[0]
-    for mod in self.ctx.program.uncompiled_modules:
+    for mod in self.uncompiled_modules:
       if module_name.startswith(mod[0] + '.'):
         return False
 
     for i in range(1, len(fqn)):
-      if fqn[:i] in self.ctx.program.uncompiled_modules:
+      if fqn[:i] in self.uncompiled_modules:
         return False
 
     # Check for local decorations
@@ -141,7 +140,7 @@ class CallTreeTransformer(converter.Base):
       if hasattr(target_entity, '__pyct_is_compile_decorator'):
         return False
 
-      if target_entity in self.ctx.program.autograph_decorators:
+      if target_entity in self.nocompile_decorators:
         return False
 
       # Inspect the target function decorators. If any include a @convert
@@ -160,7 +159,7 @@ class CallTreeTransformer(converter.Base):
       for dec in target_node.decorator_list:
         decorator_fn = self._resolve_name(dec)
         if (decorator_fn is not None and
-            decorator_fn in self.ctx.program.autograph_decorators):
+            decorator_fn in self.nocompile_decorators):
           return False
 
     return True
@@ -175,7 +174,7 @@ class CallTreeTransformer(converter.Base):
       return node
 
     if anno.hasanno(node, 'is_constructor'):
-      new_name = self.ctx.namer.compiled_class_name(
+      new_name = self.context.namer.compiled_class_name(
           target_fqn, live_entity=target_entity)
       do_rename = True
     else:
@@ -184,7 +183,7 @@ class CallTreeTransformer(converter.Base):
       else:
         # Fallback - not reliable.
         owner_type = inspect_utils.getmethodclass(target_entity)
-      new_name, do_rename = self.ctx.namer.compiled_function_name(
+      new_name, do_rename = self.context.namer.compiled_function_name(
           target_fqn, live_entity=target_entity, owner_type=owner_type)
 
     if do_rename:
@@ -265,16 +264,15 @@ class CallTreeTransformer(converter.Base):
     return node
 
   def visit_Call(self, node):
-    # If the function call is wrapped by one of the marker decorators,
+    # If the function is wrapped by one of the marker decorators,
     # consider it graph ready.
     if anno.hasanno(node.func, 'live_val'):
       target_entity = anno.getanno(node.func, 'live_val')
-      if target_entity in self.ctx.program.autograph_decorators:
+      if target_entity in self.nocompile_decorators:
         if len(node.args) < 1:
           raise ValueError(
               'Found call to decorator function "%s", but it had no arguments. '
-              'A decorator needs at least one positional argument.' %
-              target_entity)
+              'A decorator needs at least an argument.')
         anno.setanno(node.args[0], 'graph_ready', True)
 
     self.generic_visit(node)
@@ -311,20 +309,27 @@ class CallTreeTransformer(converter.Base):
         # ensure that they return the correct value.
         return node
 
-      if self.ctx.program.recursive:
+      if self.context.recursive:
         node = self._insert_dynamic_conversion(node)
     return node
 
 
-def transform(node, ctx):
+def transform(node, context, uncompiled_modules, nocompile_decorators):
   """Transform function call to the compiled counterparts.
 
   Args:
-    node: AST
-    ctx: EntityContext
+    node: AST to transform.
+    context: An EntityContext object.
+    uncompiled_modules: set of string tuples, each tuple represents the fully
+        qualified name of a package containing functions that will not be
+        compiled.
+    nocompile_decorators: A tuple containing decorators to be stripped from
+        functions during conversion.
   Returns:
     A tuple (node, new_names):
         node: The transformed AST
         new_names: set(string), containing any newly-generated names
   """
-  return CallTreeTransformer(ctx).visit(node)
+  t = CallTreeTransformer(context, uncompiled_modules, nocompile_decorators)
+  node = t.visit(node)
+  return node

@@ -20,6 +20,7 @@ from __future__ import print_function
 import numpy as np
 
 from tensorflow.python.framework import dtypes
+from tensorflow.python.framework import ops
 from tensorflow.python.framework import random_seed
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
@@ -35,20 +36,30 @@ class SquareLinearOperatorFullMatrixTest(
     linear_operator_test_util.SquareLinearOperatorDerivedClassTest):
   """Most tests done in the base class LinearOperatorDerivedClassTest."""
 
-  def _operator_and_matrix(self, build_info, dtype, use_placeholder):
+  def _operator_and_mat_and_feed_dict(self, build_info, dtype, use_placeholder):
     shape = list(build_info.shape)
 
     matrix = linear_operator_test_util.random_positive_definite_matrix(
         shape, dtype)
 
-    lin_op_matrix = matrix
-
     if use_placeholder:
-      lin_op_matrix = array_ops.placeholder_with_default(matrix, shape=None)
+      matrix_ph = array_ops.placeholder(dtype=dtype)
+      # Evaluate here because (i) you cannot feed a tensor, and (ii)
+      # values are random and we want the same value used for both mat and
+      # feed_dict.
+      matrix = matrix.eval()
+      operator = linalg.LinearOperatorFullMatrix(matrix_ph, is_square=True)
+      feed_dict = {matrix_ph: matrix}
+    else:
+      # is_square should be auto-detected here.
+      operator = linalg.LinearOperatorFullMatrix(matrix)
+      feed_dict = None
 
-    operator = linalg.LinearOperatorFullMatrix(lin_op_matrix, is_square=True)
+    # Convert back to Tensor.  Needed if use_placeholder, since then we have
+    # already evaluated matrix to a numpy array.
+    mat = ops.convert_to_tensor(matrix)
 
-    return operator, matrix
+    return operator, mat, feed_dict
 
   def test_is_x_flags(self):
     # Matrix with two positive eigenvalues.
@@ -125,20 +136,32 @@ class SquareLinearOperatorFullMatrixSymmetricPositiveDefiniteTest(
   def _dtypes_to_test(self):
     return [dtypes.float32, dtypes.float64]
 
-  def _operator_and_matrix(self, build_info, dtype, use_placeholder):
+  def _operator_and_mat_and_feed_dict(self, build_info, dtype, use_placeholder):
     shape = list(build_info.shape)
 
     matrix = linear_operator_test_util.random_positive_definite_matrix(
         shape, dtype, force_well_conditioned=True)
 
-    lin_op_matrix = matrix
-
     if use_placeholder:
-      lin_op_matrix = array_ops.placeholder_with_default(matrix, shape=None)
+      matrix_ph = array_ops.placeholder(dtype=dtype)
+      # Evaluate here because (i) you cannot feed a tensor, and (ii)
+      # values are random and we want the same value used for both mat and
+      # feed_dict.
+      matrix = matrix.eval()
+      # is_square is auto-set because of self_adjoint/pd.
+      operator = linalg.LinearOperatorFullMatrix(
+          matrix_ph, is_self_adjoint=True, is_positive_definite=True)
+      feed_dict = {matrix_ph: matrix}
+    else:
+      operator = linalg.LinearOperatorFullMatrix(
+          matrix, is_self_adjoint=True, is_positive_definite=True)
+      feed_dict = None
 
-    operator = linalg.LinearOperatorFullMatrix(lin_op_matrix, is_square=True)
+    # Convert back to Tensor.  Needed if use_placeholder, since then we have
+    # already evaluated matrix to a numpy array.
+    mat = ops.convert_to_tensor(matrix)
 
-    return operator, matrix
+    return operator, mat, feed_dict
 
   def test_is_x_flags(self):
     # Matrix with two positive eigenvalues.
@@ -187,18 +210,26 @@ class NonSquareLinearOperatorFullMatrixTest(
     linear_operator_test_util.NonSquareLinearOperatorDerivedClassTest):
   """Most tests done in the base class LinearOperatorDerivedClassTest."""
 
-  def _operator_and_matrix(self, build_info, dtype, use_placeholder):
+  def _operator_and_mat_and_feed_dict(self, build_info, dtype, use_placeholder):
     shape = list(build_info.shape)
     matrix = linear_operator_test_util.random_normal(shape, dtype=dtype)
-
-    lin_op_matrix = matrix
-
     if use_placeholder:
-      lin_op_matrix = array_ops.placeholder_with_default(matrix, shape=None)
+      matrix_ph = array_ops.placeholder(dtype=dtype)
+      # Evaluate here because (i) you cannot feed a tensor, and (ii)
+      # values are random and we want the same value used for both mat and
+      # feed_dict.
+      matrix = matrix.eval()
+      operator = linalg.LinearOperatorFullMatrix(matrix_ph)
+      feed_dict = {matrix_ph: matrix}
+    else:
+      operator = linalg.LinearOperatorFullMatrix(matrix)
+      feed_dict = None
 
-    operator = linalg.LinearOperatorFullMatrix(lin_op_matrix, is_square=True)
+    # Convert back to Tensor.  Needed if use_placeholder, since then we have
+    # already evaluated matrix to a numpy array.
+    mat = ops.convert_to_tensor(matrix)
 
-    return operator, matrix
+    return operator, mat, feed_dict
 
   def test_is_x_flags(self):
     matrix = [[3., 2., 1.], [1., 1., 1.]]

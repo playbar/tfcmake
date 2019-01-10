@@ -17,8 +17,8 @@ limitations under the License.
 #define TENSORFLOW_COMPILER_XLA_SERVICE_HLO_MATCHERS_H_
 
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
-#include "tensorflow/compiler/xla/service/hlo_parser.h"
 #include "tensorflow/compiler/xla/test.h"
+#include "tensorflow/compiler/xla/tools/parser/hlo_parser.h"
 #include "tensorflow/core/lib/gtl/optional.h"
 
 namespace xla {
@@ -187,7 +187,6 @@ HLO_MATCHER(Exp);
 HLO_MATCHER(Floor);
 HLO_MATCHER(Fusion);
 HLO_MATCHER(Ge);
-HLO_MATCHER(AfterAll);
 HLO_MATCHER(Gt);
 HLO_MATCHER(Infeed);
 HLO_MATCHER(IsFinite);
@@ -196,7 +195,6 @@ HLO_MATCHER(Log);
 HLO_MATCHER(And);
 HLO_MATCHER(Not);
 HLO_MATCHER(Or);
-HLO_MATCHER(Xor);
 HLO_MATCHER(Lt);
 HLO_MATCHER(Map);
 HLO_MATCHER(Maximum);
@@ -331,7 +329,7 @@ inline ::testing::Matcher<const ::xla::HloInstruction*> Sharding(
 inline ::testing::Matcher<const ::xla::HloInstruction*> Sharding(
     tensorflow::StringPiece sharding) {
   return ::testing::MakeMatcher(new ::xla::testing::HloShardingMatcher(
-      ParseSharding(sharding).ValueOrDie()));
+      xla::tools::ParseSharding(sharding).ValueOrDie()));
 }
 // Verifies that no HloSharding is set for an HLO instruction.
 inline ::testing::Matcher<const ::xla::HloInstruction*> NoSharding() {

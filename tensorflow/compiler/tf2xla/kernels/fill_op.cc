@@ -19,7 +19,6 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "tensorflow/compiler/xla/client/xla_client/xla_builder.h"
 #include "tensorflow/core/framework/kernel_def_builder.h"
 #include "tensorflow/core/framework/register_types.h"
 
@@ -60,11 +59,11 @@ class FillOp : public XlaOpKernel {
     xla::XlaOp data = ctx->Input(1);
     if (value_shape.dims() > 0) {
       CHECK_EQ(value_shape.dims(), 1);
-      data = xla::Reshape(data, {});
+      data = ctx->builder()->Reshape(data, {});
     }
     // Emit the actual computation, which broadcasts the scalar to the
     // desired shape.
-    auto result = xla::Broadcast(data, broadcast);
+    auto result = ctx->builder()->Broadcast(data, broadcast);
 
     ctx->SetOutput(0, result);
   }

@@ -16,7 +16,6 @@ limitations under the License.
 #ifndef TENSORFLOW_COMPILER_XLA_SERVICE_HLO_COMPUTATION_H_
 #define TENSORFLOW_COMPILER_XLA_SERVICE_HLO_COMPUTATION_H_
 
-#include <functional>
 #include <list>
 #include <memory>
 #include <string>
@@ -114,11 +113,6 @@ class HloComputation {
   // instruction.
   Status RemoveParameter(int64 param_no);
 
-  // Remove unused parameters from the computation.
-  // Note this is only applicatable to the computation for the fusion
-  // instruction.
-  Status RemoveUnusedParameters();
-
   // Add new parameter instruction to the computation.
   // This should be a new parameter. Instruction will be appended to parameters
   // and inserted to the instruction list.
@@ -205,7 +199,7 @@ class HloComputation {
 
   // Compute and return a post-order of the instructions in the computation. In
   // this order, definitions of values always appear before their uses.
-  std::vector<HloInstruction*> MakeInstructionPostOrder() const;
+  std::list<HloInstruction*> MakeInstructionPostOrder() const;
 
   // Computes and returns the reachability between HLO instructions in the
   // computation. The returned HloReachabilityMap is constructed such that
@@ -227,7 +221,7 @@ class HloComputation {
   // transitively. The embedded computations are sorted such that if computation
   // A calls computation B (eg, via a map instruction) then A will appear after
   // B in the list.
-  std::vector<HloComputation*> MakeEmbeddedComputationsList() const;
+  std::list<HloComputation*> MakeEmbeddedComputationsList() const;
 
   // Creates a fusion instruction containing the given instructions.
   // `fusion_kind` indicates the type of the fusion, e.g., loop fusion or fusion
@@ -254,14 +248,6 @@ class HloComputation {
       HloInstruction* instruction,
       const ShapeTree<bool>* indices_to_copy = nullptr,
       ShapeTree<HloInstruction*>* copies_added = nullptr);
-
-  // As above, but uses a custom function to copy the leaf nodes, which could
-  // create alternative HLOs other than kCopy, or even pass-throughs.
-  StatusOr<HloInstruction*> DeepCopyInstructionWithCustomCopier(
-      HloInstruction* instruction,
-      const std::function<
-          HloInstruction*(HloInstruction* leaf, const ShapeIndex& leaf_index,
-                          HloComputation* computation)>& copy_leaf);
 
   // Computes and returns the ProgramShape of this computation (shape of
   // parameters and result with layout).
@@ -365,10 +351,6 @@ class HloComputation {
     unique_id_ = id;
   }
 
-  // Returns the instruction in this computation that has name `name`.  Returns
-  // null if there is no such computation.
-  HloInstruction* GetInstructionWithName(tensorflow::StringPiece name);
-
   int64 unique_id() const { return unique_id_; }
 
  private:
@@ -391,10 +373,8 @@ class HloComputation {
   // Internal helper for recursive copying of an instruction. Creates and
   // returns a deep copy of the given instruction.
   StatusOr<HloInstruction*> DeepCopyHelper(
-      HloInstruction* instruction, ShapeIndex* index,
-      const std::function<
-          HloInstruction*(HloInstruction* leaf, const ShapeIndex& leaf_index,
-                          HloComputation* computation)>& copy_leaf);
+      HloInstruction* instruction, const ShapeTree<bool>* indices_to_copy,
+      ShapeTree<HloInstruction*>* copies_added, ShapeIndex* index);
 
   // Internal helper to collect unreachable roots.
   std::vector<HloInstruction*> CollectUnreachableRoots() const;

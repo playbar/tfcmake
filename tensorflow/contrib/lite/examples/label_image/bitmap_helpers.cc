@@ -28,9 +28,8 @@ limitations under the License.
 namespace tflite {
 namespace label_image {
 
-std::vector<uint8_t> decode_bmp(const uint8_t* input, int row_size, int width,
-                                int height, int channels, bool top_down) {
-  std::vector<uint8_t> output(height * width * channels);
+uint8_t* decode_bmp(const uint8_t* input, int row_size, uint8_t* const output,
+                    int width, int height, int channels, bool top_down) {
   for (int i = 0; i < height; i++) {
     int src_pos;
     int dst_pos;
@@ -67,11 +66,12 @@ std::vector<uint8_t> decode_bmp(const uint8_t* input, int row_size, int width,
       }
     }
   }
+
   return output;
 }
 
-std::vector<uint8_t> read_bmp(const std::string& input_bmp_name, int* width,
-                              int* height, int* channels, Settings* s) {
+uint8_t* read_bmp(const std::string& input_bmp_name, int* width, int* height,
+                  int* channels, Settings* s) {
   int begin, end;
 
   std::ifstream file(input_bmp_name, std::ios::in | std::ios::binary);
@@ -87,15 +87,14 @@ std::vector<uint8_t> read_bmp(const std::string& input_bmp_name, int* width,
 
   if (s->verbose) LOG(INFO) << "len: " << len << "\n";
 
-  std::vector<uint8_t> img_bytes(len);
+  const uint8_t* img_bytes = new uint8_t[len];
   file.seekg(0, std::ios::beg);
-  file.read(reinterpret_cast<char*>(img_bytes.data()), len);
+  file.read((char*)img_bytes, len);
   const int32_t header_size =
-      *(reinterpret_cast<const int32_t*>(img_bytes.data() + 10));
-  *width = *(reinterpret_cast<const int32_t*>(img_bytes.data() + 18));
-  *height = *(reinterpret_cast<const int32_t*>(img_bytes.data() + 22));
-  const int32_t bpp =
-      *(reinterpret_cast<const int32_t*>(img_bytes.data() + 28));
+      *(reinterpret_cast<const int32_t*>(img_bytes + 10));
+  *width = *(reinterpret_cast<const int32_t*>(img_bytes + 18));
+  *height = *(reinterpret_cast<const int32_t*>(img_bytes + 22));
+  const int32_t bpp = *(reinterpret_cast<const int32_t*>(img_bytes + 28));
   *channels = bpp / 8;
 
   if (s->verbose)
@@ -111,9 +110,10 @@ std::vector<uint8_t> read_bmp(const std::string& input_bmp_name, int* width,
   bool top_down = (*height < 0);
 
   // Decode image, allocating tensor once the image size is known
+  uint8_t* output = new uint8_t[abs(*height) * *width * *channels];
   const uint8_t* bmp_pixels = &img_bytes[header_size];
-  return decode_bmp(bmp_pixels, row_size, *width, abs(*height), *channels,
-                    top_down);
+  return decode_bmp(bmp_pixels, row_size, output, *width, abs(*height),
+                    *channels, top_down);
 }
 
 }  // namespace label_image

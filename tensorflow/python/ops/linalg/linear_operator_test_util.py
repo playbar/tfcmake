@@ -102,7 +102,7 @@ class LinearOperatorDerivedClassTest(test.TestCase):
     raise NotImplementedError("operator_build_infos has not been implemented.")
 
   @abc.abstractmethod
-  def _operator_and_matrix(self, build_info, dtype, use_placeholder):
+  def _operator_and_mat_and_feed_dict(self, build_info, dtype, use_placeholder):
     """Build a batch matrix and an Operator that should have similar behavior.
 
     Every operator acts like a (batch) matrix.  This method returns both
@@ -118,6 +118,9 @@ class LinearOperatorDerivedClassTest(test.TestCase):
     Returns:
       operator:  `LinearOperator` subclass instance.
       mat:  `Tensor` representing operator.
+      feed_dict:  Dictionary.
+        If placholder is True, this must contains everything needed to be fed
+          to sess.run calls at runtime to make the operator work.
     """
     # Create a matrix as a numpy array with desired shape/dtype.
     # Create a LinearOperator that should have the same behavior as the matrix.
@@ -186,12 +189,12 @@ class LinearOperatorDerivedClassTest(test.TestCase):
         for dtype in self._dtypes_to_test:
           with self.test_session(graph=ops.Graph()) as sess:
             sess.graph.seed = random_seed.DEFAULT_GRAPH_SEED
-            operator, mat = self._operator_and_matrix(
+            operator, mat, feed_dict = self._operator_and_mat_and_feed_dict(
                 build_info, dtype, use_placeholder=use_placeholder)
             op_dense = operator.to_dense()
             if not use_placeholder:
               self.assertAllEqual(build_info.shape, op_dense.get_shape())
-            op_dense_v, mat_v = sess.run([op_dense, mat])
+            op_dense_v, mat_v = sess.run([op_dense, mat], feed_dict=feed_dict)
             self.assertAC(op_dense_v, mat_v)
 
   def test_det(self):
@@ -201,13 +204,14 @@ class LinearOperatorDerivedClassTest(test.TestCase):
         for dtype in self._dtypes_to_test:
           with self.test_session(graph=ops.Graph()) as sess:
             sess.graph.seed = random_seed.DEFAULT_GRAPH_SEED
-            operator, mat = self._operator_and_matrix(
+            operator, mat, feed_dict = self._operator_and_mat_and_feed_dict(
                 build_info, dtype, use_placeholder=use_placeholder)
             op_det = operator.determinant()
             if not use_placeholder:
               self.assertAllEqual(build_info.shape[:-2], op_det.get_shape())
             op_det_v, mat_det_v = sess.run(
-                [op_det, linalg_ops.matrix_determinant(mat)])
+                [op_det, linalg_ops.matrix_determinant(mat)],
+                feed_dict=feed_dict)
             self.assertAC(op_det_v, mat_det_v)
 
   def test_log_abs_det(self):
@@ -217,7 +221,7 @@ class LinearOperatorDerivedClassTest(test.TestCase):
         for dtype in self._dtypes_to_test:
           with self.test_session(graph=ops.Graph()) as sess:
             sess.graph.seed = random_seed.DEFAULT_GRAPH_SEED
-            operator, mat = self._operator_and_matrix(
+            operator, mat, feed_dict = self._operator_and_mat_and_feed_dict(
                 build_info, dtype, use_placeholder=use_placeholder)
             op_log_abs_det = operator.log_abs_determinant()
             _, mat_log_abs_det = linalg.slogdet(mat)
@@ -225,7 +229,7 @@ class LinearOperatorDerivedClassTest(test.TestCase):
               self.assertAllEqual(
                   build_info.shape[:-2], op_log_abs_det.get_shape())
             op_log_abs_det_v, mat_log_abs_det_v = sess.run(
-                [op_log_abs_det, mat_log_abs_det])
+                [op_log_abs_det, mat_log_abs_det], feed_dict=feed_dict)
             self.assertAC(op_log_abs_det_v, mat_log_abs_det_v)
 
   def _test_matmul(self, with_batch):
@@ -242,7 +246,7 @@ class LinearOperatorDerivedClassTest(test.TestCase):
             for adjoint_arg in self._adjoint_arg_options:
               with self.test_session(graph=ops.Graph()) as sess:
                 sess.graph.seed = random_seed.DEFAULT_GRAPH_SEED
-                operator, mat = self._operator_and_matrix(
+                operator, mat, feed_dict = self._operator_and_mat_and_feed_dict(
                     build_info, dtype, use_placeholder=use_placeholder)
                 x = self._make_x(
                     operator, adjoint=adjoint, with_batch=with_batch)
@@ -260,7 +264,7 @@ class LinearOperatorDerivedClassTest(test.TestCase):
                   self.assertAllEqual(op_matmul.get_shape(),
                                       mat_matmul.get_shape())
                 op_matmul_v, mat_matmul_v = sess.run(
-                    [op_matmul, mat_matmul])
+                    [op_matmul, mat_matmul], feed_dict=feed_dict)
                 self.assertAC(op_matmul_v, mat_matmul_v)
 
   def test_matmul(self):
@@ -285,7 +289,7 @@ class LinearOperatorDerivedClassTest(test.TestCase):
             for adjoint_arg in self._adjoint_arg_options:
               with self.test_session(graph=ops.Graph()) as sess:
                 sess.graph.seed = random_seed.DEFAULT_GRAPH_SEED
-                operator, mat = self._operator_and_matrix(
+                operator, mat, feed_dict = self._operator_and_mat_and_feed_dict(
                     build_info, dtype, use_placeholder=use_placeholder)
                 rhs = self._make_rhs(
                     operator, adjoint=adjoint, with_batch=with_batch)
@@ -303,7 +307,8 @@ class LinearOperatorDerivedClassTest(test.TestCase):
                 if not use_placeholder:
                   self.assertAllEqual(op_solve.get_shape(),
                                       mat_solve.get_shape())
-                op_solve_v, mat_solve_v = sess.run([op_solve, mat_solve])
+                op_solve_v, mat_solve_v = sess.run(
+                    [op_solve, mat_solve], feed_dict=feed_dict)
                 self.assertAC(op_solve_v, mat_solve_v)
 
   def test_solve(self):
@@ -321,13 +326,14 @@ class LinearOperatorDerivedClassTest(test.TestCase):
         for dtype in self._dtypes_to_test:
           with self.test_session(graph=ops.Graph()) as sess:
             sess.graph.seed = random_seed.DEFAULT_GRAPH_SEED
-            operator, mat = self._operator_and_matrix(
+            operator, mat, feed_dict = self._operator_and_mat_and_feed_dict(
                 build_info, dtype, use_placeholder=use_placeholder)
             op_trace = operator.trace()
             mat_trace = math_ops.trace(mat)
             if not use_placeholder:
               self.assertAllEqual(op_trace.get_shape(), mat_trace.get_shape())
-            op_trace_v, mat_trace_v = sess.run([op_trace, mat_trace])
+            op_trace_v, mat_trace_v = sess.run(
+                [op_trace, mat_trace], feed_dict=feed_dict)
             self.assertAC(op_trace_v, mat_trace_v)
 
   def test_add_to_tensor(self):
@@ -337,14 +343,15 @@ class LinearOperatorDerivedClassTest(test.TestCase):
         for dtype in self._dtypes_to_test:
           with self.test_session(graph=ops.Graph()) as sess:
             sess.graph.seed = random_seed.DEFAULT_GRAPH_SEED
-            operator, mat = self._operator_and_matrix(
+            operator, mat, feed_dict = self._operator_and_mat_and_feed_dict(
                 build_info, dtype, use_placeholder=use_placeholder)
             op_plus_2mat = operator.add_to_tensor(2 * mat)
 
             if not use_placeholder:
               self.assertAllEqual(build_info.shape, op_plus_2mat.get_shape())
 
-            op_plus_2mat_v, mat_v = sess.run([op_plus_2mat, mat])
+            op_plus_2mat_v, mat_v = sess.run(
+                [op_plus_2mat, mat], feed_dict=feed_dict)
 
             self.assertAC(op_plus_2mat_v, 3 * mat_v)
 
@@ -355,7 +362,7 @@ class LinearOperatorDerivedClassTest(test.TestCase):
         for dtype in self._dtypes_to_test:
           with self.test_session(graph=ops.Graph()) as sess:
             sess.graph.seed = random_seed.DEFAULT_GRAPH_SEED
-            operator, mat = self._operator_and_matrix(
+            operator, mat, feed_dict = self._operator_and_mat_and_feed_dict(
                 build_info, dtype, use_placeholder=use_placeholder)
             op_diag_part = operator.diag_part()
             mat_diag_part = array_ops.matrix_diag_part(mat)
@@ -365,7 +372,7 @@ class LinearOperatorDerivedClassTest(test.TestCase):
                                   op_diag_part.get_shape())
 
             op_diag_part_, mat_diag_part_ = sess.run(
-                [op_diag_part, mat_diag_part])
+                [op_diag_part, mat_diag_part], feed_dict=feed_dict)
 
             self.assertAC(op_diag_part_, mat_diag_part_)
 

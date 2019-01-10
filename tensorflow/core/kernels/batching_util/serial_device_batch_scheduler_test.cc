@@ -145,6 +145,8 @@ TEST(SerialDeviceBatchSchedulerTest, PendingOnSerialDevice) {
   std::shared_ptr<SerialDeviceBatchScheduler<FakeTask>> scheduler;
   TF_ASSERT_OK(
       SerialDeviceBatchScheduler<FakeTask>::Create(options, &scheduler));
+  // Make sure batch processing thread has gone to sleep.
+  Env::Default()->SleepForMicroseconds(1000);
   int processed_batches = 0;
   Notification start_processing;
   auto queue_callback = [&mu, &processed_batches, &start_processing, &pending,
@@ -161,18 +163,26 @@ TEST(SerialDeviceBatchSchedulerTest, PendingOnSerialDevice) {
         start_processing.WaitForNotification();
         {
           mutex_lock l(mu);
-          pending = 3;
+          pending = 2;
         }
         break;
       case 2:
-        // Either low traffic or pending at target --> no adjustment.
+        // No batches initially --> low traffic --> no adjustment.
+        CHECK_EQ(scheduler->in_flight_batches_limit(), 1);
+        {
+          mutex_lock l(mu);
+          pending = 3;
+        }
+        break;
+      case 3:
+        // Pending at target --> no adjustment.
         CHECK_EQ(scheduler->in_flight_batches_limit(), 1);
         {
           mutex_lock l(mu);
           pending = 1;
         }
         break;
-      case 3:
+      case 4:
         // Small pending --> 2 additional threads added.
         CHECK_EQ(scheduler->in_flight_batches_limit(), 3);
         {
@@ -186,8 +196,8 @@ TEST(SerialDeviceBatchSchedulerTest, PendingOnSerialDevice) {
   };
   std::unique_ptr<BatchScheduler<FakeTask>> queue;
   TF_ASSERT_OK(scheduler->AddQueue({}, queue_callback, &queue));
-  // Create 3 batches.
-  for (int i = 0; i < 3; i++) {
+  // Create 4 batches.
+  for (int i = 0; i < 4; i++) {
     TF_ASSERT_OK(ScheduleTask(800, queue.get()));
   }
   start_processing.Notify();
@@ -285,22 +295,12 @@ TEST(SerialDeviceBatchSchedulerTest, DeleteQueue) {
     TF_ASSERT_OK(ScheduleTask(800, queue.get()));
   }
   std::unique_ptr<Thread> queue_deleter(Env::Default()->StartThread(
-      {}, "QueueDeleterThread",
-      [&queue, &mu, &processed_batches, scheduler]() mutable {
+      {}, "QueueDeleterThread", [&queue, &mu, &processed_batches] {
         // Delete queue, should be kept alive until empty.
         queue.reset();
-        {
-          mutex_lock l(mu);
-          // queue may be destroyed before 2nd batch finishes processing.
-          EXPECT_GT(processed_batches, 0);
-        }
-        // Delete scheduler, should be kept alive until all batches processed.
-        scheduler.reset();
         mutex_lock l(mu);
         EXPECT_EQ(processed_batches, 2);
       }));
-  // Release reference to scheduler, queue and callback above should keep alive.
-  scheduler.reset();
   // Give queue_deleter thread time to delete queue.
   Env::Default()->SleepForMicroseconds(1000);
   finish_processing.Notify();

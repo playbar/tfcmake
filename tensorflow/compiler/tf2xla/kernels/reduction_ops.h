@@ -64,7 +64,6 @@ class XlaReductionOp : public XlaOpKernel {
 
  protected:
   DataType reduction_type_;
-  xla::PrimitiveType xla_reduction_type_;
 };
 
 }  // namespace tensorflow

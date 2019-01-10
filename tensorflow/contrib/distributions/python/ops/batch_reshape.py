@@ -28,7 +28,6 @@ from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import check_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops.distributions import distribution as distribution_lib
-from tensorflow.python.util import deprecation
 
 
 __all__ = [
@@ -72,14 +71,6 @@ class BatchReshape(distribution_lib.Distribution):
 
   """
 
-  @deprecation.deprecated(
-      "2018-10-01",
-      "The TensorFlow Distributions library has moved to "
-      "TensorFlow Probability "
-      "(https://github.com/tensorflow/probability). You "
-      "should update all references to use `tfp.distributions` "
-      "instead of `tf.contrib.distributions`.",
-      warn_once=True)
   def __init__(self,
                distribution,
                batch_shape,
@@ -361,14 +352,6 @@ class BatchReshape(distribution_lib.Distribution):
       return runtime_assertions
 
 
-@deprecation.deprecated(
-    "2018-10-01",
-    "The TensorFlow Distributions library has moved to "
-    "TensorFlow Probability "
-    "(https://github.com/tensorflow/probability). You "
-    "should update all references to use `tfp.distributions` "
-    "instead of `tf.contrib.distributions`.",
-    warn_once=True)
 def calculate_reshape(original_shape, new_shape, validate=False, name=None):
   """Calculates the reshaped dimensions (replacing up to one -1 in reshape)."""
   batch_shape_static = tensor_util.constant_value_as_shape(new_shape)
@@ -401,14 +384,6 @@ def calculate_reshape(original_shape, new_shape, validate=False, name=None):
     return expanded_new_shape, batch_shape_static, validations
 
 
-@deprecation.deprecated(
-    "2018-10-01",
-    "The TensorFlow Distributions library has moved to "
-    "TensorFlow Probability "
-    "(https://github.com/tensorflow/probability). You "
-    "should update all references to use `tfp.distributions` "
-    "instead of `tf.contrib.distributions`.",
-    warn_once=True)
 def validate_init_args_statically(distribution, batch_shape):
   """Helper to __init__ which makes or raises assertions."""
   if batch_shape.shape.ndims is not None:

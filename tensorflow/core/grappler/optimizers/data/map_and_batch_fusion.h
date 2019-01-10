@@ -23,13 +23,13 @@ namespace grappler {
 
 class MapAndBatchFusion : public CustomGraphOptimizer {
  public:
-  MapAndBatchFusion() = default;
-  ~MapAndBatchFusion() override = default;
+  MapAndBatchFusion() {}
+  ~MapAndBatchFusion() override {}
 
   string name() const override { return "map_and_batch_fusion"; };
 
-  Status Init(
-      const tensorflow::RewriterConfig_CustomGraphOptimizer* config) override {
+  Status Init(const tensorflow::RewriterConfig_CustomGraphOptimizer* config =
+                  nullptr) override {
     return Status::OK();
   }
 

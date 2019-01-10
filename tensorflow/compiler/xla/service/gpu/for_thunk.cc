@@ -16,7 +16,6 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/gpu/for_thunk.h"
 
 #include "tensorflow/compiler/xla/ptr_util.h"
-#include "tensorflow/compiler/xla/service/gpu/hlo_execution_profiler.h"
 #include "tensorflow/compiler/xla/util.h"
 #include "tensorflow/core/lib/core/errors.h"
 
@@ -28,11 +27,8 @@ ForThunk::ForThunk(const int64 loop_limit,
                    const HloInstruction* hlo)
     : Thunk(Kind::kWhile, hlo),
       loop_limit_(loop_limit),
-      body_thunk_sequence_(MakeUnique<SequentialThunk>(
-          // Pass nullptr as the HloInstruction* to the body_thunk_sequence_
-          // constructor because this SequentialThunk is logically "part of"
-          // this ForThunk, and shouldn't be profiled separately from it.
-          std::move(*body_thunk_sequence), nullptr)) {}
+      body_thunk_sequence_(
+          MakeUnique<SequentialThunk>(std::move(*body_thunk_sequence), hlo)) {}
 
 Status ForThunk::Initialize(const GpuExecutable& executable,
                             se::StreamExecutor* executor) {
@@ -41,15 +37,11 @@ Status ForThunk::Initialize(const GpuExecutable& executable,
 }
 
 Status ForThunk::ExecuteOnStream(const BufferAllocations& buffer_allocations,
-                                 se::Stream* stream,
-                                 HloExecutionProfiler* profiler) {
-  auto op_profiler = profiler->MakeScopedInstructionProfiler(hlo_instruction());
+                                 se::Stream* stream) {
   for (int64 i = 0; i < loop_limit_; ++i) {
-    profiler->StartHloComputation();
     // Invoke loop body thunk sequence.
-    TF_RETURN_IF_ERROR(body_thunk_sequence_->ExecuteOnStream(buffer_allocations,
-                                                             stream, profiler));
-    profiler->FinishHloComputation(hlo_instruction()->while_body());
+    TF_RETURN_IF_ERROR(
+        body_thunk_sequence_->ExecuteOnStream(buffer_allocations, stream));
   }
   return Status::OK();
 }

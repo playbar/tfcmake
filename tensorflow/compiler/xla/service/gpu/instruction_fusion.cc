@@ -40,7 +40,6 @@ bool IsFusile(const HloInstruction& hlo) {
          hlo.opcode() == HloOpcode::kDynamicSlice ||
          hlo.opcode() == HloOpcode::kDynamicUpdateSlice ||
          hlo.opcode() == HloOpcode::kFusion ||
-         hlo.opcode() == HloOpcode::kGather ||
          hlo.opcode() == HloOpcode::kPad ||
          hlo.opcode() == HloOpcode::kReduce ||
          hlo.opcode() == HloOpcode::kReduceWindow ||
@@ -78,14 +77,15 @@ bool GpuInstructionFusion::ShouldFuse(HloInstruction* consumer,
   HloInstruction* producer = consumer->mutable_operand(operand_index);
 
   // Check if we can use output fusion for (A @ B) * alpha
-  if (producer->opcode() == HloOpcode::kDot ||
-      (producer->opcode() == HloOpcode::kFusion &&
-       producer->fused_expression_root()->opcode() == HloOpcode::kDot)) {
+  if (consumer->operand_count() == 2 &&
+      (producer->opcode() == HloOpcode::kDot ||
+       (producer->opcode() == HloOpcode::kFusion &&
+        producer->fused_expression_root()->opcode() == HloOpcode::kDot))) {
     int64 other_operand_index = 1 - operand_index;
+    const HloInstruction* alpha = consumer->operand(other_operand_index);
     HloInstruction* op1 = nullptr;
     HloInstruction* op2 = nullptr;
-    if (consumer->operand_count() == 1 &&
-        consumer->opcode() == HloOpcode::kFusion &&
+    if (consumer->opcode() == HloOpcode::kFusion &&
         consumer->fusion_kind() == HloInstruction::FusionKind::kLoop &&
         Match(consumer->fused_expression_root(),
               match::Op()
@@ -103,12 +103,10 @@ bool GpuInstructionFusion::ShouldFuse(HloInstruction* consumer,
           op2->opcode() != HloOpcode::kBroadcast) {
         return false;
       }
-      if (IsIEEEFloatingPointScalarConstant(op2->operand(0))) {
+      if (IsIEEEFloatingPointScalarConstant(alpha)) {
         return true;
       }
-    } else if (consumer->operand_count() == 2 &&
-               consumer->opcode() == HloOpcode::kMultiply) {
-      const HloInstruction* alpha = consumer->operand(other_operand_index);
+    } else if (consumer->opcode() == HloOpcode::kMultiply) {
       // Fuse if 'alpha' is a broadcast of a scalar constant.
       if (alpha->opcode() == HloOpcode::kBroadcast &&
           alpha->dimensions().empty() &&
@@ -175,61 +173,8 @@ bool GpuInstructionFusion::ShouldFuse(HloInstruction* consumer,
     return false;
   }
 
-  // Fuse scalar constants into loop fusion nodes, this reduces the number of
-  // parameters and makes matching scalar broadcasts easier.
-  if (ShapeUtil::IsEffectiveScalar(producer->shape()) &&
-      consumer->opcode() == HloOpcode::kFusion &&
-      producer->opcode() == HloOpcode::kConstant) {
-    return true;
-  }
-
-  if (!IsFusile(*producer) || !IsFusile(*consumer) ||
-      !InstructionFusion::ShouldFuse(consumer, operand_index)) {
-    return false;
-  }
-
-  // Limit the maximum number of operands to a fusion.
-  //
-  // There's a limit to how many parameters we can pass to a CUDA kernel, but
-  // exactly what that limit is is hazy, as it depends on (among other things)
-  // how much GPU constant memory is in use for other purposes.
-  //
-  // Moreover, we don't even know at this point how many arguments the CUDA
-  // kernel for this fusion node will have: It depends on buffer assignment,
-  // where we will decide which of the fusion's operands live in XLA's big temp
-  // buffer versus in other allocations.
-  //
-  // As a heuristic, we simply cap the number of fusion operands at
-  // kMaxOperandsPerFusion.  This puts an upper bound on the number of
-  // parameters to the kernel, working around the correctness problem.
-  //
-  // This limit is also often good for performance.  In a fusion with many
-  // operands, each GPU thread likely has to do a lot of work, and so possibly
-  // uses a lot of registers, thus limiting occupancy.
-  //
-  // We put this check last because it's expensive to compute.
-
-  // The new fusion will have no more operands than
-  //   producer_operands + consumer_operands - 1
-  // (minus one because we're fusing the producer->consumer edge).  This fact
-  // may be enough to let us avoid having to compute the true total number of
-  // operands, taking into account the fact that producer and consumer may share
-  // operands.
-  if (producer->operand_count() + consumer->operand_count() - 1 >
-      kMaxOperandsPerFusion) {
-    tensorflow::gtl::FlatSet<const HloInstruction*> producer_operands(
-        producer->operands().begin(), producer->operands().end());
-    int64 new_num_operands =
-        producer->operand_count() +
-        c_count_if(consumer->operands(), [&](const HloInstruction* operand) {
-          return operand != producer && !producer_operands.count(operand);
-        });
-    if (new_num_operands > kMaxOperandsPerFusion) {
-      return false;
-    }
-  }
-
-  return true;
+  return IsFusile(*producer) && IsFusile(*consumer) &&
+         InstructionFusion::ShouldFuse(consumer, operand_index);
 }
 
 bool GpuInstructionFusion::ShouldFuseIntoMultiOutput(HloInstruction* consumer,

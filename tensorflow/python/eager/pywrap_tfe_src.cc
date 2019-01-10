@@ -205,20 +205,14 @@ bool ParseDimensionValue(const string& key, PyObject* py_value,
 }
 
 bool ParseStringValue(const string& key, PyObject* py_value, TF_Status* status,
-                      tensorflow::StringPiece* value) {
+                      const char** value) {
   if (PyBytes_Check(py_value)) {
-    Py_ssize_t size = 0;
-    char* buf = nullptr;
-    if (PyBytes_AsStringAndSize(py_value, &buf, &size) < 0) return false;
-    *value = tensorflow::StringPiece(buf, size);
+    *value = PyBytes_AsString(py_value);
     return true;
   }
 #if PY_MAJOR_VERSION >= 3
   if (PyUnicode_Check(py_value)) {
-    Py_ssize_t size = 0;
-    char* buf = PyUnicode_AsUTF8AndSize(py_value, &size);
-    if (buf == nullptr) return false;
-    *value = tensorflow::StringPiece(buf, size);
+    *value = PyUnicode_AsUTF8(py_value);
     return true;
   }
 #endif
@@ -281,16 +275,8 @@ bool SetOpAttrList(
   }
 
   if (type == TF_ATTR_STRING) {
-    std::unique_ptr<const void*[]> values(new const void*[num_values]);
-    std::unique_ptr<size_t[]> lengths(new size_t[num_values]);
-    for (int i = 0; i < num_values; ++i) {
-      tensorflow::StringPiece value;
-      tensorflow::Safe_PyObjectPtr py_value(PySequence_ITEM(py_list, i));
-      if (!ParseStringValue(key, py_value.get(), status, &value)) return false;
-      values[i] = value.data();
-      lengths[i] = value.size();
-    }
-    TFE_OpSetAttrStringList(op, key, values.get(), lengths.get(), num_values);
+    PARSE_LIST(const char*, ParseStringValue);
+    TFE_OpSetAttrStringList(op, key, values.get(), num_values);
   } else if (type == TF_ATTR_INT) {
     PARSE_LIST(int64_t, ParseInt64Value);
     TFE_OpSetAttrIntList(op, key, values.get(), num_values);
@@ -393,15 +379,12 @@ void SetOpAttrListDefault(
     TF_Status* status) {
   if (type == TF_ATTR_STRING) {
     int num_values = attr.default_value().list().s_size();
-    std::unique_ptr<const void*[]> values(new const void*[num_values]);
-    std::unique_ptr<size_t[]> lengths(new size_t[num_values]);
+    std::unique_ptr<const char*[]> values(new const char*[num_values]);
     (*attr_list_sizes)[key] = num_values;
     for (int i = 0; i < num_values; i++) {
-      const string& v = attr.default_value().list().s(i);
-      values[i] = v.data();
-      lengths[i] = v.size();
+      values[i] = attr.default_value().list().s(i).data();
     }
-    TFE_OpSetAttrStringList(op, key, values.get(), lengths.get(), num_values);
+    TFE_OpSetAttrStringList(op, key, values.get(), num_values);
   } else if (type == TF_ATTR_INT) {
     int num_values = attr.default_value().list().i_size();
     std::unique_ptr<int64_t[]> values(new int64_t[num_values]);
@@ -487,9 +470,9 @@ bool SetOpAttrScalar(
     tensorflow::gtl::FlatMap<string, tensorflow::int64>* attr_list_sizes,
     TF_Status* status) {
   if (type == TF_ATTR_STRING) {
-    tensorflow::StringPiece value;
+    const char* value;
     if (!ParseStringValue(key, py_value, status, &value)) return false;
-    TFE_OpSetAttrString(op, key, value.data(), value.size());
+    TFE_OpSetAttrString(op, key, value);
   } else if (type == TF_ATTR_INT) {
     int64_t value;
     if (!ParseInt64Value(key, py_value, status, &value)) return false;
@@ -550,7 +533,7 @@ bool SetOpAttrScalar(
     //     (which is what the various "defun" or "Defun" decorators do).
     // And in the future also allow an object that can encapsulate
     // the function name and its attribute values.
-    tensorflow::StringPiece func_name;
+    const char* func_name = nullptr;
     if (!ParseStringValue(key, py_value, status, &func_name)) {
       PyObject* name_attr = PyObject_GetAttrString(py_value, "name");
       if (name_attr == nullptr ||
@@ -566,8 +549,7 @@ bool SetOpAttrScalar(
         return false;
       }
     }
-    TFE_Op* func = TFE_NewOp(
-        ctx, string(func_name.data(), func_name.size()).c_str(), status);
+    TFE_Op* func = TFE_NewOp(ctx, func_name, status);
     if (TF_GetCode(status) != TF_OK) return false;
     TFE_OpSetAttrFunction(op, key, func);
     TFE_DeleteOp(func);
@@ -948,7 +930,7 @@ class GradientTape
         : id(id), variable(variable) {}
   };
   struct CompareById {
-    bool operator()(const IdAndVariable& lhs, const IdAndVariable& rhs) const {
+    bool operator()(const IdAndVariable& lhs, const IdAndVariable& rhs) {
       return lhs.id < rhs.id;
     }
   };
@@ -1173,14 +1155,14 @@ static tensorflow::eager::TapeTensor TapeTensorFromTensor(PyObject* tensor) {
   if (EagerTensor_CheckExact(tensor)) {
     TFE_TensorHandle* t = EagerTensor_Handle(tensor);
     tensorflow::int64 id = EagerTensor_id(tensor);
-    tensorflow::TensorShape tensor_shape;
-    const tensorflow::Status status = t->handle->Shape(&tensor_shape);
-
+    const tensorflow::Tensor* tensor = nullptr;
+    const tensorflow::Status status = t->handle->Tensor(&tensor);
     if (MaybeRaiseExceptionFromStatus(status, nullptr)) {
       return tensorflow::eager::TapeTensor{id, t->handle->dtype,
                                            tensorflow::TensorShape({})};
     } else {
-      return tensorflow::eager::TapeTensor{id, t->handle->dtype, tensor_shape};
+      return tensorflow::eager::TapeTensor{id, t->handle->dtype,
+                                           tensor->shape()};
     }
   }
   tensorflow::int64 id = FastTensorId(tensor);
@@ -1898,37 +1880,12 @@ PyObject* RecordGradient(PyObject* op_name, PyObject* inputs, PyObject* attrs,
 
 void MaybeWatchVariable(PyObject* input) {
   DCHECK(CheckResourceVariable(input));
-  DCHECK(PyObject_HasAttrString(input, "_trainable"));
+  DCHECK(PyObject_HasAttrString(input, "trainable"));
 
   tensorflow::Safe_PyObjectPtr trainable(
-      PyObject_GetAttrString(input, "_trainable"));
+      PyObject_GetAttrString(input, "trainable"));
   if (trainable.get() == Py_False) return;
   TFE_Py_TapeSetWatchVariable(input);
-}
-
-bool CastTensor(const FastPathOpExecInfo& op_exec_info,
-                const TF_DataType& desired_dtype,
-                tensorflow::Safe_TFE_TensorHandlePtr* handle,
-                TF_Status* status) {
-  TF_DataType input_dtype = TFE_TensorHandleDataType(handle->get());
-  TF_DataType output_dtype = input_dtype;
-
-  if (desired_dtype >= 0 && desired_dtype != input_dtype) {
-    *handle = tensorflow::make_safe(
-        tensorflow::EagerCast(op_exec_info.ctx, handle->get(), input_dtype,
-                              static_cast<TF_DataType>(desired_dtype), status));
-    if (!status->status.ok()) return false;
-    output_dtype = desired_dtype;
-  }
-
-  if (output_dtype != TF_INT32) {
-    // Note that this is a shallow copy and will share the underlying buffer
-    // if copying to the same device.
-    *handle = tensorflow::make_safe(TFE_TensorHandleCopyToDevice(
-        handle->get(), op_exec_info.ctx, op_exec_info.device_name, status));
-    if (!status->status.ok()) return false;
-  }
-  return true;
 }
 
 bool ReadVariableOp(const FastPathOpExecInfo& parent_op_exec_info,
@@ -1963,31 +1920,9 @@ bool ReadVariableOp(const FastPathOpExecInfo& parent_op_exec_info,
   TFE_Execute(op, &output_handle, &num_retvals, status);
   if (MaybeRaiseExceptionFromTFStatus(status, nullptr)) return false;
 
-  if (!PyObject_HasAttrString(input, "_read_dtype")) {
-    // Always create the py object (and correctly DECREF it) from the returned
-    // value, else the data will leak.
-    output->reset(EagerTensorFromHandle(output_handle));
-  } else {
-    // This is a _MixedPrecisionVariable which potentially does casting when
-    // being read.
-    tensorflow::Safe_PyObjectPtr read_dtype(
-        PyObject_GetAttrString(input, "_read_dtype"));
-    int desired_dtype = -1;
-    if (!ParseTypeValue("_read_dtype", read_dtype.get(), status,
-                        &desired_dtype)) {
-      return false;
-    }
-
-    auto safe_output_handle = tensorflow::make_safe(output_handle);
-    // Retires output_handle in the future.
-    output_handle = nullptr;
-    if (!CastTensor(parent_op_exec_info,
-                    static_cast<TF_DataType>(desired_dtype),
-                    &safe_output_handle, status)) {
-      return false;
-    }
-    output->reset(EagerTensorFromHandle(safe_output_handle.release()));
-  }
+  // Always create the py object (and correctly DECREF it) from the returned
+  // value, else the data will leak.
+  output->reset(EagerTensorFromHandle(output_handle));
 
   // TODO(nareshmodi): Should we run post exec callbacks here?
   if (parent_op_exec_info.run_gradient_callback) {
@@ -2057,13 +1992,27 @@ bool ConvertToTensor(
     }
   }
 
-  if (!CastTensor(op_exec_info, static_cast<TF_DataType>(desired_dtype),
-                  &handle, status)) {
-    return false;
+  TF_DataType handle_dtype = TFE_TensorHandleDataType(handle.get());
+  if (desired_dtype >= 0 && desired_dtype != handle_dtype) {
+    handle = tensorflow::make_safe(
+        tensorflow::EagerCast(op_exec_info.ctx, handle.get(), handle_dtype,
+                              static_cast<TF_DataType>(desired_dtype), status));
+    if (!status->status.ok()) return false;
+
+    handle_dtype = TFE_TensorHandleDataType(handle.get());
   }
-  TF_DataType output_dtype = TFE_TensorHandleDataType(handle.get());
+
+  if (handle_dtype != TF_INT32) {
+    // Note that this is a shallow copy and will share the underlying buffer
+    // if copying to the same device.
+    handle = tensorflow::make_safe(TFE_TensorHandleCopyToDevice(
+        handle.get(), op_exec_info.ctx, op_exec_info.device_name, status));
+    if (!status->status.ok()) return false;
+  }
+
   output_handle->reset(EagerTensorFromHandle(handle.release()));
-  dtype_setter(output_dtype);
+
+  dtype_setter(handle_dtype);
 
   return true;
 }

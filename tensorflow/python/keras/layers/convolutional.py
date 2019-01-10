@@ -26,8 +26,8 @@ from tensorflow.python.keras import backend
 from tensorflow.python.keras import constraints
 from tensorflow.python.keras import initializers
 from tensorflow.python.keras import regularizers
-from tensorflow.python.keras.engine.base_layer import InputSpec
-from tensorflow.python.keras.engine.base_layer import Layer
+from tensorflow.python.keras.engine import InputSpec
+from tensorflow.python.keras.engine import Layer
 # imports for backwards namespace compatibility
 # pylint: disable=unused-import
 from tensorflow.python.keras.layers.pooling import AveragePooling1D
@@ -151,23 +151,21 @@ class Conv(Layer):
     input_dim = int(input_shape[channel_axis])
     kernel_shape = self.kernel_size + (input_dim, self.filters)
 
-    self.kernel = self.add_weight(
-        name='kernel',
-        shape=kernel_shape,
-        initializer=self.kernel_initializer,
-        regularizer=self.kernel_regularizer,
-        constraint=self.kernel_constraint,
-        trainable=True,
-        dtype=self.dtype)
+    self.kernel = self.add_variable(name='kernel',
+                                    shape=kernel_shape,
+                                    initializer=self.kernel_initializer,
+                                    regularizer=self.kernel_regularizer,
+                                    constraint=self.kernel_constraint,
+                                    trainable=True,
+                                    dtype=self.dtype)
     if self.use_bias:
-      self.bias = self.add_weight(
-          name='bias',
-          shape=(self.filters,),
-          initializer=self.bias_initializer,
-          regularizer=self.bias_regularizer,
-          constraint=self.bias_constraint,
-          trainable=True,
-          dtype=self.dtype)
+      self.bias = self.add_variable(name='bias',
+                                    shape=(self.filters,),
+                                    initializer=self.bias_initializer,
+                                    regularizer=self.bias_regularizer,
+                                    constraint=self.bias_constraint,
+                                    trainable=True,
+                                    dtype=self.dtype)
     else:
       self.bias = None
     self.input_spec = InputSpec(ndim=self.rank + 2,
@@ -382,11 +380,11 @@ class Conv2D(Conv):
       filters: Integer, the dimensionality of the output space
           (i.e. the number of output filters in the convolution).
       kernel_size: An integer or tuple/list of 2 integers, specifying the
-          height and width of the 2D convolution window.
+          width and height of the 2D convolution window.
           Can be a single integer to specify the same value for
           all spatial dimensions.
       strides: An integer or tuple/list of 2 integers,
-          specifying the strides of the convolution along the height and width.
+          specifying the strides of the convolution along the width and height.
           Can be a single integer to specify the same value for
           all spatial dimensions.
           Specifying any stride value != 1 is incompatible with specifying
@@ -613,11 +611,11 @@ class Conv2DTranspose(Conv2D):
       filters: Integer, the dimensionality of the output space
           (i.e. the number of output filters in the convolution).
       kernel_size: An integer or tuple/list of 2 integers, specifying the
-          height and width of the 2D convolution window.
+          width and height of the 2D convolution window.
           Can be a single integer to specify the same value for
           all spatial dimensions.
       strides: An integer or tuple/list of 2 integers,
-          specifying the strides of the convolution along the height and width.
+          specifying the strides of the convolution along the width and height.
           Can be a single integer to specify the same value for
           all spatial dimensions.
           Specifying any stride value != 1 is incompatible with specifying
@@ -722,23 +720,21 @@ class Conv2DTranspose(Conv2D):
     self.input_spec = InputSpec(ndim=4, axes={channel_axis: input_dim})
     kernel_shape = self.kernel_size + (self.filters, input_dim)
 
-    self.kernel = self.add_weight(
-        name='kernel',
-        shape=kernel_shape,
-        initializer=self.kernel_initializer,
-        regularizer=self.kernel_regularizer,
-        constraint=self.kernel_constraint,
-        trainable=True,
-        dtype=self.dtype)
+    self.kernel = self.add_variable(name='kernel',
+                                    shape=kernel_shape,
+                                    initializer=self.kernel_initializer,
+                                    regularizer=self.kernel_regularizer,
+                                    constraint=self.kernel_constraint,
+                                    trainable=True,
+                                    dtype=self.dtype)
     if self.use_bias:
-      self.bias = self.add_weight(
-          name='bias',
-          shape=(self.filters,),
-          initializer=self.bias_initializer,
-          regularizer=self.bias_regularizer,
-          constraint=self.bias_constraint,
-          trainable=True,
-          dtype=self.dtype)
+      self.bias = self.add_variable(name='bias',
+                                    shape=(self.filters,),
+                                    initializer=self.bias_initializer,
+                                    regularizer=self.bias_regularizer,
+                                    constraint=self.bias_constraint,
+                                    trainable=True,
+                                    dtype=self.dtype)
     else:
       self.bias = None
     self.built = True
@@ -965,7 +961,7 @@ class Conv3DTranspose(Conv3D):
     kernel_shape = self.kernel_size + (self.filters, input_dim)
     self.input_spec = InputSpec(ndim=5, axes={channel_axis: input_dim})
 
-    self.kernel = self.add_weight(
+    self.kernel = self.add_variable(
         'kernel',
         shape=kernel_shape,
         initializer=self.kernel_initializer,
@@ -974,7 +970,7 @@ class Conv3DTranspose(Conv3D):
         trainable=True,
         dtype=self.dtype)
     if self.use_bias:
-      self.bias = self.add_weight(
+      self.bias = self.add_variable(
           'bias',
           shape=(self.filters,),
           initializer=self.bias_initializer,
@@ -1195,7 +1191,6 @@ class SeparableConv(Conv):
         dilation_rate=dilation_rate,
         activation=activations.get(activation),
         use_bias=use_bias,
-        bias_initializer=initializers.get(bias_initializer),
         bias_regularizer=regularizers.get(bias_regularizer),
         activity_regularizer=regularizers.get(activity_regularizer),
         bias_constraint=bias_constraint,
@@ -1227,7 +1222,7 @@ class SeparableConv(Conv):
     pointwise_kernel_shape = (
         1,) * self.rank + (self.depth_multiplier * input_dim, self.filters)
 
-    self.depthwise_kernel = self.add_weight(
+    self.depthwise_kernel = self.add_variable(
         name='depthwise_kernel',
         shape=depthwise_kernel_shape,
         initializer=self.depthwise_initializer,
@@ -1235,7 +1230,7 @@ class SeparableConv(Conv):
         constraint=self.depthwise_constraint,
         trainable=True,
         dtype=self.dtype)
-    self.pointwise_kernel = self.add_weight(
+    self.pointwise_kernel = self.add_variable(
         name='pointwise_kernel',
         shape=pointwise_kernel_shape,
         initializer=self.pointwise_initializer,
@@ -1244,14 +1239,13 @@ class SeparableConv(Conv):
         trainable=True,
         dtype=self.dtype)
     if self.use_bias:
-      self.bias = self.add_weight(
-          name='bias',
-          shape=(self.filters,),
-          initializer=self.bias_initializer,
-          regularizer=self.bias_regularizer,
-          constraint=self.bias_constraint,
-          trainable=True,
-          dtype=self.dtype)
+      self.bias = self.add_variable(name='bias',
+                                    shape=(self.filters,),
+                                    initializer=self.bias_initializer,
+                                    regularizer=self.bias_regularizer,
+                                    constraint=self.bias_constraint,
+                                    trainable=True,
+                                    dtype=self.dtype)
     else:
       self.bias = None
     self.built = True
@@ -1453,11 +1447,11 @@ class SeparableConv2D(SeparableConv):
       filters: Integer, the dimensionality of the output space
           (i.e. the number of output filters in the convolution).
       kernel_size: An integer or tuple/list of 2 integers, specifying the
-          height and width of the 2D convolution window.
+          width and height of the 2D convolution window.
           Can be a single integer to specify the same value for
           all spatial dimensions.
       strides: An integer or tuple/list of 2 integers,
-          specifying the strides of the convolution along the height and width.
+          specifying the strides of the convolution along the width and height.
           Can be a single integer to specify the same value for
           all spatial dimensions.
           Specifying any stride value != 1 is incompatible with specifying
@@ -1597,11 +1591,11 @@ class DepthwiseConv2D(Conv2D):
 
   Arguments:
     kernel_size: An integer or tuple/list of 2 integers, specifying the
-        height and width of the 2D convolution window.
+        width and height of the 2D convolution window.
         Can be a single integer to specify the same value for
         all spatial dimensions.
     strides: An integer or tuple/list of 2 integers,
-        specifying the strides of the convolution along the height and width.
+        specifying the strides of the convolution along the width and height.
         Can be a single integer to specify the same value for
         all spatial dimensions.
         Specifying any stride value != 1 is incompatible with specifying
@@ -1730,7 +1724,7 @@ class DepthwiseConv2D(Conv2D):
         dilation_rate=self.dilation_rate,
         data_format=self.data_format)
 
-    if self.use_bias:
+    if self.bias:
       outputs = backend.bias_add(
           outputs,
           self.bias,
@@ -2008,7 +2002,7 @@ class ZeroPadding2D(Layer):
   Arguments:
       padding: int, or tuple of 2 ints, or tuple of 2 tuples of 2 ints.
           - If int: the same symmetric padding
-              is applied to height and width.
+              is applied to width and height.
           - If tuple of 2 ints:
               interpreted as two different
               symmetric padding values for height and width:
@@ -2107,7 +2101,7 @@ class ZeroPadding3D(Layer):
   Arguments:
       padding: int, or tuple of 3 ints, or tuple of 3 tuples of 2 ints.
           - If int: the same symmetric padding
-              is applied to height and width.
+              is applied to width and height.
           - If tuple of 3 ints:
               interpreted as two different
               symmetric padding values for height and width:
@@ -2267,12 +2261,12 @@ class Cropping1D(Layer):
 class Cropping2D(Layer):
   """Cropping layer for 2D input (e.g. picture).
 
-  It crops along spatial dimensions, i.e. height and width.
+  It crops along spatial dimensions, i.e. width and height.
 
   Arguments:
       cropping: int, or tuple of 2 ints, or tuple of 2 tuples of 2 ints.
           - If int: the same symmetric cropping
-              is applied to height and width.
+              is applied to width and height.
           - If tuple of 2 ints:
               interpreted as two different
               symmetric cropping values for height and width:

@@ -85,10 +85,5 @@ PrimitiveType ComplexComponentType(PrimitiveType complex_type) {
   }
 }
 
-bool IsArrayType(PrimitiveType primitive_type) {
-  return primitive_type != PRIMITIVE_TYPE_INVALID && primitive_type != TUPLE &&
-         primitive_type != OPAQUE && primitive_type != TOKEN;
-}
-
 }  // namespace primitive_util
 }  // namespace xla

@@ -482,7 +482,6 @@ class Tensor {
   friend class VariableOp;            // For access to set_shape
   friend class AutoReloadVariableOp;  // For access to set_shape
   friend class TensorTestHelper;      // For access to set_shape
-  friend class CastOpBase;            // For access to set_dtype;
   friend class OpKernelContext;       // For access to RefCountIsOne().
   friend class ScopedAllocator;       // For access to buf_.
   friend class XlaTensor;             // For access to RefCountIsOne().

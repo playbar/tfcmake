@@ -45,17 +45,15 @@ XlaComputation CreateScalarMinComputation(PrimitiveType type,
                                           XlaBuilder* builder);
 
 // Creates a scalar logical AND computation and returns it.
-XlaComputation CreateScalarAndComputation(PrimitiveType type,
-                                          XlaBuilder* builder);
+XlaComputation CreateScalarAndComputation(XlaBuilder* builder);
 
 // Creates a scalar logical OR computation and returns it.
-XlaComputation CreateScalarOrComputation(PrimitiveType type,
-                                         XlaBuilder* builder);
+XlaComputation CreateScalarOrComputation(XlaBuilder* builder);
 
 // Returns whether any predicate in "predicates" is set.
 //
 // Note: if predicates is zero-sized, Any() vacuously returns false.
-XlaOp Any(XlaOp predicates);
+StatusOr<XlaOp> Any(const XlaOp& predicates, XlaBuilder* builder);
 
 }  // namespace xla
 

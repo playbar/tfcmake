@@ -31,10 +31,11 @@ class BatchNormExpander : public HloPassInterface {
   // When use_fusion is set, a multi-output fusion node is created.
   BatchNormExpander(bool rewrite_training_op = false,
                     bool rewrite_inference_op = false,
-                    bool rewrite_grad_op = false)
+                    bool rewrite_grad_op = false, bool use_fusion = true)
       : rewrite_training_op_(rewrite_training_op),
         rewrite_inference_op_(rewrite_inference_op),
-        rewrite_grad_op_(rewrite_grad_op) {}
+        rewrite_grad_op_(rewrite_grad_op),
+        use_fusion_(use_fusion) {}
   ~BatchNormExpander() = default;
   tensorflow::StringPiece name() const override { return "batchnorm_expander"; }
 
@@ -46,6 +47,7 @@ class BatchNormExpander : public HloPassInterface {
   bool rewrite_training_op_;
   bool rewrite_inference_op_;
   bool rewrite_grad_op_;
+  bool use_fusion_;
 };
 
 }  // namespace xla

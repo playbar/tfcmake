@@ -20,7 +20,6 @@ limitations under the License.
 #include <vector>
 
 #include "tensorflow/compiler/xla/map_util.h"
-#include "tensorflow/compiler/xla/service/hlo_dataflow_analysis.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/types.h"
@@ -122,6 +121,7 @@ void PointsToSet::add_tuple_source(const ShapeIndex& index,
 }
 
 namespace {
+
 // Gather fusion instructions from 'instruction' into 'fusion_instructions'.
 void GatherFusionInstructions(
     HloInstruction* instruction,
@@ -292,29 +292,22 @@ Status TuplePointsToAnalysis::HandleSlice(HloInstruction* slice) {
 }
 
 Status TuplePointsToAnalysis::HandleRecvDone(HloInstruction* recv_done) {
-  // RecvDone aliases its input (Recv) tuple element {0} to element {0} of its
-  // output. The other indices ({} and {1}) define their own buffers.
+  // RecvDone aliases its input (Recv) tuple element {0} to its output.
   PointsToSet& points_to_set = CreateEmptyPointsToSet(recv_done);
-  points_to_set.AddPointedToBuffer(
-      logical_buffer_analysis_->GetBuffer(recv_done, /*index=*/{}),
-      /*index=*/{});
-  points_to_set.AddPointedToBuffer(
-      logical_buffer_analysis_->GetBuffer(recv_done, /*index=*/{1}),
-      /*index=*/{1});
-
   const PointsToSet& operand_points_to_set =
       GetPointsToSet(recv_done->operand(0));
 
-  // Recursively copy the points to set of the operand tuple {0} to the output
-  // element {0}.
+  // Recursively copy the points to set of the operand tuple {0}.
   points_to_set.ForEachMutableElement(
       [this, &points_to_set, &operand_points_to_set](
           const ShapeIndex& index, PointsToSet::BufferList* buffers) {
-        if (index.empty() || index[0] != 0) {
-          return;
+        ShapeIndex src_index({0});
+        for (auto element : index) {
+          src_index.push_back(element);
         }
-        *buffers = operand_points_to_set.element(index);
-        for (auto& tuple_source : operand_points_to_set.tuple_sources(index)) {
+        *buffers = operand_points_to_set.element(src_index);
+        for (auto& tuple_source :
+             operand_points_to_set.tuple_sources(src_index)) {
           points_to_set.add_tuple_source(index, tuple_source);
         }
       });
@@ -322,7 +315,7 @@ Status TuplePointsToAnalysis::HandleRecvDone(HloInstruction* recv_done) {
 }
 
 Status TuplePointsToAnalysis::HandleSend(HloInstruction* send) {
-  // Send creates a tuple of {aliased operand, U32 context, token}.
+  // Send creates a tuple of {aliased operand, U32 context}.
   PointsToSet& points_to_set = CreateEmptyPointsToSet(send);
 
   // Creates the points to set for the tuple and its element at {1}.
@@ -334,10 +327,6 @@ Status TuplePointsToAnalysis::HandleSend(HloInstruction* send) {
   auto context_buffer = points_to_set.mutable_element(ShapeIndex({1}));
   context_buffer->push_back(
       &logical_buffer_analysis_->GetBuffer(send, ShapeIndex({1})));
-
-  auto token_buffer = points_to_set.mutable_element(ShapeIndex({2}));
-  token_buffer->push_back(
-      &logical_buffer_analysis_->GetBuffer(send, ShapeIndex({2})));
 
   // Recursively copy the points to set of the operand to output tuple {0}.
   const PointsToSet& operand_points_to_set = GetPointsToSet(send->operand(0));
@@ -399,7 +388,7 @@ Status TuplePointsToAnalysis::HandleTuple(HloInstruction* tuple) {
   return Status::OK();
 }
 
-Status TuplePointsToAnalysis::HandleTupleSelect(HloInstruction* tuple_select) {
+Status TuplePointsToAnalysis::HandleSelect(HloInstruction* select) {
   // Select allocates a new buffer and then shallow copies the on_true or
   // on_false buffer into this new buffer. Which side is chosen cannot be
   // determined statically so conservatively set the points-to set to the union
@@ -407,9 +396,9 @@ Status TuplePointsToAnalysis::HandleTupleSelect(HloInstruction* tuple_select) {
   //
   // First create a copy of the on_true points-to set (and tuple sources), then
   // add in elements of the on_false points-to set (tuple sources).
-  auto on_true = tuple_select->operand(1);
-  auto on_false = tuple_select->operand(2);
-  PointsToSet& points_to_set = CreateCopiedPointsToSet(tuple_select, on_true);
+  auto on_true = select->operand(1);
+  auto on_false = select->operand(2);
+  PointsToSet& points_to_set = CreateCopiedPointsToSet(select, on_true);
   const PointsToSet& false_points_to_set = *PerInst(on_false)->points_to_set;
   points_to_set.ForEachMutableElement(
       [&](const ShapeIndex& index, PointsToSet::BufferList* buffers) {
@@ -427,7 +416,7 @@ Status TuplePointsToAnalysis::HandleTupleSelect(HloInstruction* tuple_select) {
   // respective element in the points-to set should contain only itself.
   points_to_set.mutable_element({})->clear();
   points_to_set.AddPointedToBuffer(
-      logical_buffer_analysis_->GetBuffer(tuple_select, /*index=*/{}),
+      logical_buffer_analysis_->GetBuffer(select, /*index=*/{}),
       /*index=*/{});
   return Status::OK();
 }
@@ -734,22 +723,15 @@ bool TuplePointsToAnalysis::CanShareOperandBufferWithUser(
     return false;
   }
   if (user->opcode() == HloOpcode::kFusion) {
-    if (user->fusion_kind() == HloInstruction::FusionKind::kLoop ||
-        user->fusion_kind() == HloInstruction::FusionKind::kInput) {
-      if (user->fused_expression_root()->opcode() ==
-          HloOpcode::kDynamicUpdateSlice) {
-        // Loop fusion with kDynamicUpdateSlice fused root.
-        //
-        // Returns true iff there is exactly one use of 'operand' at shape index
-        // 'operand_index', and this singleton use is the fused root at operand
-        // index 0.
-        return HasUniqueFusedUseOfOperandAt(operand, operand_index, user, 0);
-      } else {
-        HloInstruction* fusion_param =
-            user->fused_parameter(user->operand_index(operand));
-        return HloDataflowAnalysis::AreTransitiveUsesElementwiseOrTuple(
-            fusion_param);
-      }
+    if (user->fusion_kind() == HloInstruction::FusionKind::kLoop &&
+        user->fused_expression_root()->opcode() ==
+            HloOpcode::kDynamicUpdateSlice) {
+      // Loop fusion with kDynamicUpdateSlice fused root.
+      //
+      // Returns true iff there is exactly one use of 'operand' at shape index
+      // 'operand_index', and this singleton use is the fused root at operand
+      // index 0.
+      return HasUniqueFusedUseOfOperandAt(operand, operand_index, user, 0);
     } else if (user->fusion_kind() == HloInstruction::FusionKind::kOutput &&
                user->fused_expression_root()->opcode() == HloOpcode::kAdd) {
       // Output fusion with kAdd fused root.
@@ -807,12 +789,8 @@ bool TuplePointsToAnalysis::CanShareOperandBufferWithUser(
     return param_uses.size() == 1 && param_uses[0].first == callee_root &&
            callee_root->IsElementwiseOnOperand(param_uses[0].second);
   }
-  // Loop fusions that contain transposing copies won't reach here as they have
-  // different layouts, which fails the check in the beginning of this function.
-  //
-  // Multi-output fusion will fail the check here as tuples are not considered
-  // an elementwise operation.
-  return user->IsElementwiseOnOperand(user->operand_index(operand));
+  // Check if 'user' is element-wise.
+  return user->IsElementwise();
 }
 
 }  // namespace xla

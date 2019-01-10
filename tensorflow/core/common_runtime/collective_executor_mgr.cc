@@ -25,11 +25,11 @@ namespace tensorflow {
 
 CollectiveExecutorMgr::CollectiveExecutorMgr(
     const ConfigProto& config, const DeviceMgr* dev_mgr,
-    std::unique_ptr<DeviceResolverInterface> dev_resolver,
-    std::unique_ptr<ParamResolverInterface> param_resolver)
+    DeviceResolverInterface* dev_resolver,
+    ParamResolverInterface* param_resolver)
     : dev_mgr_(dev_mgr),
-      dev_resolver_(std::move(dev_resolver)),
-      param_resolver_(std::move(param_resolver)) {}
+      dev_resolver_(dev_resolver),
+      param_resolver_(param_resolver) {}
 
 CollectiveExecutorMgr::~CollectiveExecutorMgr() {
   for (auto iter : executor_table_) {
@@ -45,18 +45,14 @@ CollectiveExecutor* CollectiveExecutorMgr::FindOrCreate(int64 step_id) {
     if (it != executor_table_.end()) {
       ce = it->second;
     } else {
-      ce = Create(step_id);
+      CollectiveRemoteAccessLocal* rma = new CollectiveRemoteAccessLocal(
+          dev_mgr_, dev_resolver_.get(), step_id);
+      ce = new BaseCollectiveExecutor(this, rma, step_id, dev_mgr_);
       executor_table_[step_id] = ce;
     }
     ce->Ref();
   }
   return ce;
-}
-
-CollectiveExecutor* CollectiveExecutorMgr::Create(int64 step_id) {
-  CollectiveRemoteAccessLocal* rma =
-      new CollectiveRemoteAccessLocal(dev_mgr_, dev_resolver_.get(), step_id);
-  return new BaseCollectiveExecutor(this, rma, step_id, dev_mgr_);
 }
 
 void CollectiveExecutorMgr::Cleanup(int64 step_id) {

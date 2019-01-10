@@ -24,7 +24,6 @@ from tensorflow.python.ops import check_ops
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops.distributions import bijector
-from tensorflow.python.util import deprecation
 
 
 __all__ = [
@@ -50,14 +49,6 @@ class Square(bijector.Bijector):
 
   """
 
-  @deprecation.deprecated(
-      "2018-10-01",
-      "The TensorFlow Distributions library has moved to "
-      "TensorFlow Probability "
-      "(https://github.com/tensorflow/probability). You "
-      "should update all references to use `tfp.distributions` "
-      "instead of `tf.contrib.distributions`.",
-      warn_once=True)
   def __init__(self, validate_args=False, name="square"):
     """Instantiates the `Square` bijector.
 
@@ -90,3 +81,4 @@ class Square(bijector.Bijector):
     is_valid = check_ops.assert_non_negative(
         t, message="All elements must be non-negative.")
     return control_flow_ops.with_dependencies([is_valid], t)
+

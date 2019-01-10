@@ -16,10 +16,10 @@ load(
 tf_cc_binary(
     name = "s3_file_system.so",
     srcs = [
-        "aws_crypto.cc",
-        "aws_crypto.h",
         "aws_logging.cc",
         "aws_logging.h",
+        "s3_crypto.cc",
+        "s3_crypto.h",
         "s3_file_system.cc",
         "s3_file_system.h",
     ],
@@ -40,14 +40,16 @@ tf_cc_binary(
 )
 
 cc_library(
-    name = "aws_crypto",
+    name = "s3_crypto",
     srcs = [
-        "aws_crypto.cc",
+        "s3_crypto.cc",
     ],
     hdrs = [
-        "aws_crypto.h",
+        "s3_crypto.h",
     ],
     deps = [
+        "//tensorflow/core:lib",
+        "//tensorflow/core:lib_internal",
         "@aws",
         "@boringssl//:crypto",
     ],
@@ -79,8 +81,8 @@ cc_library(
         "s3_file_system.h",
     ],
     deps = [
-        ":aws_crypto",
         ":aws_logging",
+        ":s3_crypto",
         "//tensorflow/core:lib",
         "//tensorflow/core:lib_internal",
         "@aws",

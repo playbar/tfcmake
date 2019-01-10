@@ -34,7 +34,8 @@ class Scope::Impl {
   // name that has not been used so far in a scope will get no suffix. Later
   // uses of the same name will get suffixes _1, _2, _3, etc. Multiple scopes
   // can share the same NameMap. For instance, a new scope created using
-  // WithControlDependencies() would share the same NameMap with the parent.
+  // WithControlDependencies() should would share the same NameMap with the
+  // parent.
   typedef std::unordered_map<string, int> NameMap;
 
   Impl(const std::shared_ptr<Graph>& graph,

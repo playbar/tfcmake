@@ -68,7 +68,7 @@ class StatSummarizer {
   }
 
   // Prints the string returned by GetOutputString().
-  void PrintStepStats() const;
+  void PrintStepStats() const { stats_calculator_->PrintStepStats(); }
 
   // Prints the output tensor sizes and types for each node.
   void PrintOutputs() const;

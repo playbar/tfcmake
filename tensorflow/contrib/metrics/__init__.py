@@ -63,7 +63,6 @@ See the @{$python/contrib.metrics} guide.
 @@aggregate_metrics
 @@aggregate_metric_map
 @@confusion_matrix
-@@f1_score
 @@set_difference
 @@set_intersection
 @@set_size

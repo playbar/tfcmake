@@ -50,7 +50,6 @@ py_library(
     deps = [
         ":gen_bigquery_reader_ops",
         ":gen_gcs_config_ops",
-        "//tensorflow/contrib/bigtable",
         "//tensorflow/python:framework_for_generated_wrappers",
         "//tensorflow/python:io_ops",
         "//tensorflow/python:util",
@@ -72,17 +71,6 @@ tf_py_test(
         "//tensorflow/python:parsing_ops",
         "//tensorflow/python:platform",
         "//tensorflow/python:util",
-    ],
-    tags = ["manual"],
-)
-
-tf_py_test(
-    name = "gcs_config_ops_test",
-    size = "small",
-    srcs = ["python/ops/gcs_config_ops_test.py"],
-    additional_deps = [
-        ":cloud_py",
-        "//tensorflow/python:client_testlib",
     ],
     tags = ["manual"],
 )

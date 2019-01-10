@@ -19,8 +19,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
-from collections import OrderedDict
 import contextlib
 import gc
 import itertools
@@ -29,7 +27,6 @@ import random
 import re
 import tempfile
 import threading
-import unittest
 
 import numpy as np
 import six
@@ -64,13 +61,13 @@ from tensorflow.python.framework import random_seed
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.framework import versions
 from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import resource_variable_ops
 from tensorflow.python.ops import variables
 from tensorflow.python.platform import googletest
 from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.training import server_lib
 from tensorflow.python.util import compat
 from tensorflow.python.util import nest
-from tensorflow.python.util import tf_inspect
 from tensorflow.python.util.protobuf import compare
 from tensorflow.python.util.tf_export import tf_export
 
@@ -324,6 +321,32 @@ def NCHWToNHWC(input_tensor):
     return [input_tensor[a] for a in new_axes[ndims]]
 
 
+# TODO(skyewm): remove this eventually
+# pylint: disable=protected-access
+def _use_c_api_wrapper(fn, use_c_api, *args, **kwargs):
+  prev_value = ops._USE_C_API
+  ops._USE_C_API = use_c_api
+  try:
+    # Reset the default graph so it has the C API enabled. We call
+    # reset_default_graph() instead of creating a new default Graph context to
+    # make this robust to tests that call reset_default_graph(), which requires
+    # that the current default graph isn't nested.
+    ops.reset_default_graph()
+    fn(*args, **kwargs)
+  finally:
+    ops._USE_C_API = prev_value
+    # Make sure default graph reflects prev_value in case next test doesn't call
+    # reset_default_graph().
+    ops.reset_default_graph()
+
+
+# pylint: disable=protected-access
+
+
+def c_api_and_cuda_enabled():
+  return ops._USE_C_API and IsGoogleCudaEnabled()
+
+
 def skip_if(condition):
   """Skips the decorated function if condition is or evaluates to True.
 
@@ -349,6 +372,46 @@ def skip_if(condition):
   return real_skip_if
 
 
+# TODO(skyewm): remove this eventually
+def disable_c_api(fn):
+  """Decorator for disabling the C API on a test.
+
+  Note this disables the C API after running the test class's setup/teardown
+  methods.
+
+  Args:
+    fn: the function to be wrapped
+
+  Returns:
+    The wrapped function
+  """
+
+  def wrapper(*args, **kwargs):
+    _use_c_api_wrapper(fn, False, *args, **kwargs)
+
+  return wrapper
+
+
+# TODO(skyewm): remove this eventually
+def enable_c_api(fn):
+  """Decorator for enabling the C API on a test.
+
+  Note this enables the C API after running the test class's setup/teardown
+  methods.
+
+  Args:
+    fn: the function to be wrapped
+
+  Returns:
+    The wrapped function
+  """
+
+  def wrapper(*args, **kwargs):
+    _use_c_api_wrapper(fn, True, *args, **kwargs)
+
+  return wrapper
+
+
 def enable_c_shapes(fn):
   """Decorator for enabling C shapes on a test.
 
@@ -362,17 +425,44 @@ def enable_c_shapes(fn):
     The wrapped function
   """
 
-  # pylint: disable=protected-access
   def wrapper(*args, **kwargs):
     prev_value = ops._USE_C_SHAPES
-    ops._USE_C_SHAPES = True
+    # Only use C shapes if the C API is already enabled.
+    ops._USE_C_SHAPES = ops._USE_C_API
     try:
       fn(*args, **kwargs)
     finally:
       ops._USE_C_SHAPES = prev_value
-  # pylint: enable=protected-access
 
   return wrapper
+
+
+# This decorator is a hacky way to run all the test methods in a decorated
+# class with and without C API enabled.
+# TODO(iga): Remove this and its uses once we switch to using C API by default.
+def with_c_api(cls):
+  """Adds methods that call original methods but with C API enabled.
+
+  Note this enables the C API in new methods after running the test class's
+  setup method. This can be a problem if some objects are created in it
+  before the C API is enabled.
+
+  Args:
+    cls: class to decorate
+
+  Returns:
+    cls with new test methods added
+  """
+  # If the C API is already enabled, don't do anything. Some tests break if the
+  # same test is run twice, so this allows us to turn on the C API by default
+  # without breaking these tests.
+  if ops._USE_C_API:
+    return cls
+
+  for name, value in cls.__dict__.copy().items():
+    if callable(value) and name.startswith("test"):
+      setattr(cls, name + "WithCApi", enable_c_api(value))
+  return cls
 
 
 def with_c_shapes(cls):
@@ -417,28 +507,8 @@ def assert_no_new_pyobjects_executing_eagerly(f):
       f(self, **kwargs)
       gc.collect()
       previous_count = len(gc.get_objects())
-      collection_sizes_before = {
-          collection: len(ops.get_collection(collection))
-          for collection in ops.get_default_graph().collections}
       for _ in range(3):
         f(self, **kwargs)
-      # Note that gc.get_objects misses anything that isn't subject to garbage
-      # collection (C types). Collections are a common source of leaks, so we
-      # test for collection sizes explicitly.
-      for collection_key in ops.get_default_graph().collections:
-        collection = ops.get_collection(collection_key)
-        size_before = collection_sizes_before.get(collection_key, 0)
-        if len(collection) > size_before:
-          raise AssertionError(
-              ("Collection %s increased in size from "
-               "%d to %d (current items %s).")
-              % (collection_key, size_before, len(collection), collection))
-        # Make sure our collection checks don't show up as leaked memory by
-        # removing references to temporary variables.
-        del collection
-        del collection_key
-        del size_before
-      del collection_sizes_before
       gc.collect()
       # There should be no new Python objects hanging around.
       new_count = len(gc.get_objects())
@@ -573,88 +643,15 @@ def assert_no_garbage_created(f):
   return decorator
 
 
-def _combine_named_parameters(**kwargs):
-  """Generate combinations based on its keyword arguments.
-
-  Two sets of returned combinations can be concatenated using +.  Their product
-  can be computed using `times()`.
-
-  Args:
-    **kwargs: keyword arguments of form `option=[possibilities, ...]`
-         or `option=the_only_possibility`.
-
-  Returns:
-    a list of dictionaries for each combination. Keys in the dictionaries are
-    the keyword argument names.  Each key has one value - one of the
-    corresponding keyword argument values.
-  """
-  if not kwargs:
-    return [OrderedDict()]
-
-  sort_by_key = lambda k: k[0][0]
-  kwargs = OrderedDict(sorted(kwargs.items(), key=sort_by_key))
-  first = list(kwargs.items())[0]
-
-  rest = dict(list(kwargs.items())[1:])
-  rest_combined = _combine_named_parameters(**rest)
-
-  key = first[0]
-  values = first[1]
-  if not isinstance(values, list):
-    values = [values]
-
-  combinations = [
-      OrderedDict(sorted(list(combined.items()) + [(key, v)], key=sort_by_key))
-      for v in values
-      for combined in rest_combined
-  ]
-  return combinations
-
-
-def generate_combinations_with_testcase_name(**kwargs):
-  """Generate combinations based on its keyword arguments using combine().
-
-  This function calls combine() and appends a testcase name to the list of
-  dictionaries returned. The 'testcase_name' key is a required for named
-  parameterized tests.
-
-  Args:
-    **kwargs: keyword arguments of form `option=[possibilities, ...]`
-         or `option=the_only_possibility`.
-
-  Returns:
-    a list of dictionaries for each combination. Keys in the dictionaries are
-    the keyword argument names.  Each key has one value - one of the
-    corresponding keyword argument values.
-  """
-  combinations = _combine_named_parameters(**kwargs)
-  named_combinations = []
-  for combination in combinations:
-    assert isinstance(combination, OrderedDict)
-    name = "".join([
-        "_{}_{}".format(
-            "".join(filter(str.isalnum, key)),
-            "".join(filter(str.isalnum, str(value))))
-        for key, value in combination.items()
-    ])
-    named_combinations.append(
-        OrderedDict(
-            list(combination.items()) + [("testcase_name",
-                                          "_test{}".format(name))]))
-
-  return named_combinations
-
-
 def run_all_in_graph_and_eager_modes(cls):
-  """Execute all test methods in the given class with and without eager."""
-  base_decorator = run_in_graph_and_eager_modes
+  base_decorator = run_in_graph_and_eager_modes()
   for name, value in cls.__dict__.copy().items():
     if callable(value) and name.startswith("test"):
       setattr(cls, name, base_decorator(value))
   return cls
 
 
-def run_in_graph_and_eager_modes(func=None,
+def run_in_graph_and_eager_modes(__unused__=None,
                                  config=None,
                                  use_gpu=True,
                                  reset_test=True,
@@ -672,7 +669,7 @@ def run_in_graph_and_eager_modes(func=None,
   ```python
   class MyTests(tf.test.TestCase):
 
-    @run_in_graph_and_eager_modes
+    @run_in_graph_and_eager_modes()
     def test_foo(self):
       x = tf.constant([1, 2])
       y = tf.constant([3, 4])
@@ -689,9 +686,7 @@ def run_in_graph_and_eager_modes(func=None,
 
 
   Args:
-    func: function to be annotated. If `func` is None, this method returns a
-      decorator the can be applied to a function. If `func` is not None this
-      returns the decorator applied to `func`.
+    __unused__: Prevents silently skipping tests.
     config: An optional config_pb2.ConfigProto to use to configure the
       session when executing graphs.
     use_gpu: If True, attempt to run as many operations as possible on GPU.
@@ -713,19 +708,20 @@ def run_in_graph_and_eager_modes(func=None,
     eager execution enabled.
   """
 
-  def decorator(f):
-    if tf_inspect.isclass(f):
-      raise ValueError(
-          "`run_test_in_graph_and_eager_modes` only supports test methods. "
-          "Did you mean to use `run_all_tests_in_graph_and_eager_modes`?")
+  assert not __unused__, "Add () after run_in_graph_and_eager_modes."
 
+  def decorator(f):
     def decorated(self, **kwargs):
-      try:
-        with context.graph_mode():
-          with self.test_session(use_gpu=use_gpu, config=config):
-            f(self, **kwargs)
-      except unittest.case.SkipTest:
-        pass
+      with context.graph_mode():
+        with self.test_session(use_gpu=use_gpu):
+          f(self, **kwargs)
+
+      if reset_test:
+        # This decorator runs the wrapped test twice.
+        # Reset the test environment between runs.
+        self.tearDown()
+        self._tempdir = None
+        self.setUp()
 
       def run_eagerly(self, **kwargs):
         if not use_gpu:
@@ -740,19 +736,9 @@ def run_in_graph_and_eager_modes(func=None,
             assert_no_garbage_created(run_eagerly))
 
       with context.eager_mode():
-        if reset_test:
-          # This decorator runs the wrapped test twice.
-          # Reset the test environment between runs.
-          self.tearDown()
-          self._tempdir = None
-          self.setUp()
-
         run_eagerly(self, **kwargs)
 
     return decorated
-
-  if func is not None:
-    return decorator(func)
 
   return decorator
 
@@ -936,13 +922,14 @@ class TensorFlowTestCase(googletest.TestCase):
   def _eval_tensor(self, tensor):
     if tensor is None:
       return None
+    elif isinstance(tensor, ops.EagerTensor):
+      return tensor.numpy()
+    elif isinstance(tensor, resource_variable_ops.ResourceVariable):
+      return tensor.read_value().numpy()
     elif callable(tensor):
       return self._eval_helper(tensor())
     else:
-      try:
-        return tensor.numpy()
-      except AttributeError as e:
-        six.raise_from(ValueError("Unsupported type %s." % type(tensor)), e)
+      raise ValueError("Unsupported type %s." % type(tensor))
 
   def _eval_helper(self, tensors):
     if tensors is None:
@@ -1301,8 +1288,8 @@ class TensorFlowTestCase(googletest.TestCase):
       a = a._asdict()
     if hasattr(b, "_asdict"):
       b = b._asdict()
-    a_is_dict = isinstance(a, collections.Mapping)
-    if a_is_dict != isinstance(b, collections.Mapping):
+    a_is_dict = isinstance(a, dict)
+    if a_is_dict != isinstance(b, dict):
       raise ValueError("Can't compare dict to non-dict, a%s vs b%s. %s" %
                        (path_str, path_str, msg))
     if a_is_dict:
@@ -1347,11 +1334,11 @@ class TensorFlowTestCase(googletest.TestCase):
             b,
             rtol=rtol,
             atol=atol,
-            msg=("Mismatched value: a%s is different from b%s. %s" %
-                 (path_str, path_str, msg)))
+            msg="Mismatched value: a%s is different from b%s." % (path_str,
+                                                                  path_str))
       except TypeError as e:
-        msg = ("Error: a%s has %s, but b%s has %s. %s" %
-               (path_str, type(a), path_str, type(b), msg))
+        msg = "Error: a%s has %s, but b%s has %s" % (path_str, type(a),
+                                                     path_str, type(b))
         e.args = ((e.args[0] + " : " + msg,) + e.args[1:])
         raise
 

@@ -132,12 +132,6 @@ void AppendArrayVal(string* string, Array const& array, int index) {
       return;
     }
     AppendF(string, "%d", data[index]);
-  } else if (array.buffer->type == ArrayDataType::kBool) {
-    const auto& data = array.GetBuffer<ArrayDataType::kBool>().data;
-    if (index >= data.size()) {
-      return;
-    }
-    AppendF(string, "%d", data[index]);
   }
 }
 
@@ -146,7 +140,6 @@ NodeProperties GetPropertiesForArray(const Model& model,
   NodeProperties node_properties;
   node_properties.color = GetColorForArray(model, array_name);
   node_properties.label = absl::StrReplaceAll(array_name, {{"/", "/\\n"}});
-  node_properties.log2_buffer_size = 0.0f;
 
   // Append array shape to the label.
   auto& array = model.GetArray(array_name);
@@ -166,12 +159,9 @@ NodeProperties GetPropertiesForArray(const Model& model,
     }
     node_properties.label += "]";
 
-    int buffer_size = 0;
-    if (IsValid(array.shape())) {
-      buffer_size = RequiredBufferSizeForShape(array.shape());
-      node_properties.log2_buffer_size =
-          std::log2(static_cast<float>(buffer_size));
-    }
+    int buffer_size = RequiredBufferSizeForShape(array.shape());
+    node_properties.log2_buffer_size =
+        std::log2(static_cast<float>(buffer_size));
 
     if (array.buffer) {
       const auto& array = model.GetArray(array_name);
@@ -204,6 +194,8 @@ NodeProperties GetPropertiesForArray(const Model& model,
         AppendF(&node_properties.label, "}");
       }
     }
+  } else {
+    node_properties.log2_buffer_size = 0.0f;
   }
 
   if (array.minmax) {
@@ -227,7 +219,7 @@ NodeProperties GetPropertiesForArray(const Model& model,
 
 NodeProperties GetPropertiesForOperator(const Operator& op) {
   NodeProperties node_properties;
-  if (op.type == OperatorType::kUnsupported) {
+  if (op.type == OperatorType::kTensorFlowUnsupported) {
     node_properties.label =
         static_cast<const TensorFlowUnsupportedOperator&>(op).tensorflow_op;
   } else {

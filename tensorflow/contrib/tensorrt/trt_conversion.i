@@ -48,68 +48,23 @@ PyObject* pair_helper(std::pair<string, string>* in) {
   }
   return tuple;
 }
-
-struct version_struct{
-  int vmajor;
-  int vminor;
-  int vpatch;
-};
-
-PyObject* version_helper(version_struct* in) {
-  PyObject *tuple(nullptr);
-  tuple = Py_BuildValue("(iii)", in->vmajor, in->vminor, in->vpatch);
-  if (!tuple) {
-    if (!PyErr_Occurred()) {
-      PyErr_SetString(PyExc_TypeError,
-                      "Tuple creation from version structure failed!");
-    }
-    return NULL;
-  }
-  return tuple;
-}
-/* Define converters for vector<int> */
-template<>
-bool _PyObjAs(PyObject *pyobj, int* dest) {
-  *dest = PyLong_AsLong(pyobj);
-  return true;
-}
-
-template<>
-PyObject *_PyObjFrom(const int& src) {
-  return PyLong_FromLong(src);
-}
-
 %}
-
-_LIST_OUTPUT_TYPEMAP(int, PyLong_FromLong);
-
 %typemap(out) std::pair<string, string> {
   PyObject *tuple = pair_helper(&$1);
   if (!tuple) SWIG_fail;
   $result = tuple;
 }
-
-%typemap(out) version_struct {
-  PyObject *tuple = version_helper(&$1);
-  if (!tuple) SWIG_fail;
-  $result = tuple;
-}
-
 %{
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/util/stat_summarizer.h"
 #include "tensorflow/contrib/tensorrt/convert/convert_graph.h"
-#include "tensorflow/contrib/tensorrt/convert/utils.h"
 %}
 
 %ignoreall
 %unignore tensorflow;
 %unignore trt_convert;
 %unignore calib_convert;
-%unignore get_linked_tensorrt_version;
-%unignore get_loaded_tensorrt_version;
-%unignore is_tensorrt_enabled;
 
 %{
 
@@ -119,10 +74,7 @@ std::pair<string, string> trt_convert(
     size_t max_batch_size,
     size_t max_workspace_size_bytes,
     int precision_mode,
-    int minimum_segment_size,
-    bool is_dyn_op,
-    int max_cached_engines,
-    std::vector<int> cached_engine_batches
+    int minimum_segment_size
     // Unfortunately we can't use TF_Status here since it
     // is in c/c_api and brings in a lot of other libraries
     // which in turn declare ops. These ops are included
@@ -142,7 +94,7 @@ std::pair<string, string> trt_convert(
     return std::pair<string, string>{out_status, ""};
   }
 
-  if (precision_mode < 0 || precision_mode > 2) {
+  if(precision_mode < 0 || precision_mode > 2){
     out_status = "InvalidArgument;Invalid precision_mode";
     return std::pair<string, string>{out_status, ""};
   }
@@ -150,12 +102,11 @@ std::pair<string, string> trt_convert(
     out_status = "InvalidArgument;Size of the output_names vector is 0";
     return std::pair<string, string>{out_status, ""};
   }
-  tensorflow::GraphDef out_graph;
+  tensorflow::GraphDef outGraph;
   tensorflow::Status conversion_status =
       tensorflow::tensorrt::convert::ConvertGraphDefToTensorRT(
           graph_def, output_names, max_batch_size, max_workspace_size_bytes,
-          &out_graph, precision_mode, minimum_segment_size,
-          is_dyn_op, max_cached_engines, cached_engine_batches);
+          &outGraph, precision_mode, minimum_segment_size);
   if (!conversion_status.ok()) {
     auto retCode = (int)conversion_status.code();
     char buff[2000];
@@ -165,7 +116,7 @@ std::pair<string, string> trt_convert(
     return std::pair<string, string>{out_status, ""};
   }
   string result;
-  if (!out_graph.SerializeToString(&result)) {
+  if (!outGraph.SerializeToString(&result)) {
     out_status = "InvalidArgument;Couldn't serialize output as a GraphDef";
     return std::pair<string, string>{out_status, ""};
   }
@@ -177,8 +128,7 @@ std::pair<string, string> trt_convert(
 #endif  // GOOGLE_CUDA && GOOGLE_TENSORRT
 }
 
-std::pair<string, string> calib_convert(
-    string graph_def_string, bool is_dyn_op
+std::pair<string, string> calib_convert(string graph_def_string  //  const tensorflow::GraphDef&
     // unfortunately we can't use TF_Status here since it
     // is in c/c_api and brings in a lot of other libraries
     // which in turn declare ops. These ops are included
@@ -197,11 +147,11 @@ std::pair<string, string> calib_convert(
     out_status = "InvalidArgument;Couldn't interpret input as a GraphDef";
     return std::pair<string, string>{out_status, ""};
   }
-  graph_def_string.resize(0);
-  tensorflow::GraphDef out_graph;
+
+  tensorflow::GraphDef outGraph;
   tensorflow::Status conversion_status =
-      tensorflow::tensorrt::convert::ConvertCalibGraphToInferGraph(
-          graph_def, &out_graph, is_dyn_op);
+      tensorflow::tensorrt::convert::ConvertCalibGraphToInferGraph(graph_def,
+                                                                   &outGraph);
   if (!conversion_status.ok()) {
     auto retCode = (int)conversion_status.code();
     char buff[2000];
@@ -211,7 +161,7 @@ std::pair<string, string> calib_convert(
     return std::pair<string, string>{out_status, ""};
   }
   string result;
-  if (!out_graph.SerializeToString(&result)) {
+  if (!outGraph.SerializeToString(&result)) {
     out_status = "InvalidArgument;Couldn't serialize output as a GraphDef";
     return std::pair<string, string>{out_status, ""};
   }
@@ -222,49 +172,15 @@ std::pair<string, string> calib_convert(
   return std::pair<string, string>{"9;TensorRT is not enabled!", ""};
 #endif  // GOOGLE_CUDA && GOOGLE_TENSORRT
 }
-
-version_struct get_linked_tensorrt_version() {
-  // Return the version at the link time.
-  version_struct s;
-#if GOOGLE_CUDA && GOOGLE_TENSORRT
-  const auto &lv = tensorflow::tensorrt::convert::GetLinkedTensorRTVersion();
-  s.vmajor = lv[0];
-  s.vminor = lv[1];
-  s.vpatch = lv[2];
-#endif  // GOOGLE_CUDA && GOOGLE_TENSORRT
-  return s;
-}
-
-version_struct get_loaded_tensorrt_version() {
-  // Return the version from the loaded library.
-  version_struct s;
-#if GOOGLE_CUDA && GOOGLE_TENSORRT
-  const auto &lv = tensorflow::tensorrt::convert::GetLoadedTensorRTVersion();
-  s.vmajor = lv[0];
-  s.vminor = lv[1];
-  s.vpatch = lv[2];
-#endif  // GOOGLE_CUDA && GOOGLE_TENSORRT
-  return s;
-}
-
-bool is_tensorrt_enabled() {
-  return tensorflow::tensorrt::IsGoogleTensorRTEnabled();
-}
-
 %}
 
-std::pair<string, string> calib_convert(string graph_def_string, bool is_dyn_op);
+std::pair<string, string> calib_convert(string graph_def_string);
 
 std::pair<string, string> trt_convert(string graph_def_string,
                                       std::vector<string> output_names,
                                       size_t max_batch_size,
                                       size_t max_workspace_size_bytes,
-                                      int precision_mode, int minimum_segment_size,
-                                      bool is_dyn_op,
-                                      int max_cached_engines,
-                                      std::vector<int> cached_engine_batches);
-version_struct get_linked_tensorrt_version();
-version_struct get_loaded_tensorrt_version();
-bool is_tensorrt_enabled();
+                                      int precision_mode, int minimum_segment_size);
+
 
 %unignoreall

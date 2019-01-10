@@ -22,7 +22,6 @@ from tensorflow.contrib import linalg
 from tensorflow.contrib.distributions.python.ops import mvn_linear_operator as mvn_linop
 from tensorflow.python.framework import ops
 from tensorflow.python.ops.distributions import util as distribution_util
-from tensorflow.python.util import deprecation
 
 
 __all__ = [
@@ -135,14 +134,6 @@ class MultivariateNormalTriL(
 
   """
 
-  @deprecation.deprecated(
-      "2018-10-01",
-      "The TensorFlow Distributions library has moved to "
-      "TensorFlow Probability "
-      "(https://github.com/tensorflow/probability). You "
-      "should update all references to use `tfp.distributions` "
-      "instead of `tf.contrib.distributions`.",
-      warn_once=True)
   def __init__(self,
                loc=None,
                scale_tril=None,

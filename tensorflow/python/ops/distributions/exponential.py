@@ -103,6 +103,9 @@ class Exponential(gamma.Gamma):
         allow_nan_stats=allow_nan_stats,
         validate_args=validate_args,
         name=name)
+    # While the Gamma distribution is not reparameterizable, the exponential
+    # distribution is.
+    self._reparameterization_type = True
     self._parameters = parameters
     self._graph_parents += [self._rate]
 

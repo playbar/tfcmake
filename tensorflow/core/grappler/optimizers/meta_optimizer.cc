@@ -42,7 +42,6 @@ namespace grappler {
 namespace {
 
 constexpr int kDefaultNumberOfIterations = 2;
-constexpr int kDefaultMinGraphNodes = 4;
 
 int64 NumEdges(const GraphDef& graph) {
   int64 num_edges = 0;
@@ -91,8 +90,7 @@ std::unique_ptr<GraphOptimizer> MetaOptimizer::MakeNewOptimizer(
   MK_OPT("dependency", new DependencyOptimizer(cfg_.dependency_optimization()));
   MK_OPT("debug_stripper", new DebugStripper());
   MK_OPT("scoped_allocator",
-         new ScopedAllocatorOptimizer(cfg_.scoped_allocator_optimization(),
-                                      cfg_.scoped_allocator_opts()));
+         new ScopedAllocatorOptimizer(cfg_.scoped_allocator_opts()));
 
   return std::unique_ptr<GraphOptimizer>();
 }
@@ -151,8 +149,8 @@ Status MetaOptimizer::InitializeOptimizers(
         new AutoParallel(cfg_.auto_parallel().num_replicas()));
   }
   if (cfg_.scoped_allocator_optimization()) {
-    optimizers->emplace_back(new ScopedAllocatorOptimizer(
-        cfg_.scoped_allocator_optimization(), cfg_.scoped_allocator_opts()));
+    optimizers->emplace_back(
+        new ScopedAllocatorOptimizer(cfg_.scoped_allocator_opts()));
   }
   return Status::OK();
 }
@@ -196,15 +194,6 @@ Status MetaOptimizer::InitializeOptimizersByName(
 
 Status MetaOptimizer::OptimizeGraph(Cluster* cluster, const GrapplerItem& item,
                                     GraphDef* optimized_graph) {
-  int min_graph_nodes = cfg_.min_graph_nodes() == 0 ? kDefaultMinGraphNodes
-                                                    : cfg_.min_graph_nodes();
-  if (item.graph.node_size() < min_graph_nodes) {
-    VLOG(3) << "Skipping optimization, graph has less than " << min_graph_nodes
-            << " nodes.";
-    *optimized_graph = item.graph;
-    return Status::OK();
-  }
-
   std::vector<std::unique_ptr<GraphOptimizer>> optimizers;
   if (cfg_.optimizers().empty() && cfg_.custom_optimizers().empty()) {
     TF_RETURN_IF_ERROR(InitializeOptimizers(&optimizers));
@@ -213,11 +202,10 @@ Status MetaOptimizer::OptimizeGraph(Cluster* cluster, const GrapplerItem& item,
   }
 
   VLOG(2) << "Optimize GrapplerItem: item.id=" << item.id
-          << " num_optimizers=" << optimizers.size()
-          << ", num nodes = " << item.graph.node_size();
+          << " num_optimizers=" << optimizers.size();
 
   if (optimizers.empty()) {
-    VLOG(3) << "Skipping graph optimization, no optimizers registered";
+    VLOG(3) << "Skip graph optimization, no optimizers registered";
     *optimized_graph = item.graph;
     return Status::OK();
   }
@@ -229,54 +217,59 @@ Status MetaOptimizer::OptimizeGraph(Cluster* cluster, const GrapplerItem& item,
 
   bool is_optimized = false;
   GraphOptimizationResult optimization_result(item.id);
-  GraphOptimizer* fusion_optimizer = nullptr;
-  GraphOptimizer* sa_optimizer = nullptr;
 
-  for (int iteration = 0; iteration < NumIterations(cfg_); ++iteration) {
-    // Don't bother optimizing further if the graph is already tiny.
-    if (optimized_graph->node_size() < min_graph_nodes) {
-      VLOG(3) << "Stopping after iteration " << iteration
-              << ", graph is tiny (#nodes = " << optimized_graph->node_size()
-              << "  < " << min_graph_nodes << ")";
-      break;
+  // ScopedAllocatorOptimizer must run last, so move it to the
+  // end of optimizers and run only on the last iteration.
+  {
+    int sa_index = 0;
+    for (; sa_index < optimizers.size(); ++sa_index) {
+      if (optimizers[sa_index]->name() == "scoped_allocator_optimizer") {
+        break;
+      }
     }
+    const int last_index = optimizers.size() - 1;
+    if (sa_index < last_index) {
+      optimizers[last_index].swap(optimizers[sa_index]);
+    }
+  }
 
-    VLOG(4) << "Starting optimization iteration " << iteration;
+  const int last_iteration = NumIterations(cfg_) - 1;
+  for (int iteration = 0; iteration < NumIterations(cfg_); ++iteration) {
+    VLOG(4) << "Starting optimization iteration " << iteration + 1;
+
     for (const auto& optimizer : optimizers) {
       // Some optimizers can run only once.
       if (iteration > 0 && IsRunOnceOptimizer(optimizer->name())) continue;
       // Some must run only on the last iteration.
-      if (optimizer->name() == "scoped_allocator_optimizer") {
-        if (sa_optimizer == nullptr) sa_optimizer = optimizer.get();
+      if (optimizer->name() == "scoped_allocator_optimizer" &&
+          iteration != last_iteration)
         continue;
+
+      uint64 start_us = Env::Default()->NowMicros();
+      // This swaps the current optimized_graph into optimized item and
+      // resets optimized_graph to an empty graph.
+      optimized_graph->Swap(&optimized_item.graph);
+      *optimized_graph = GraphDef();
+      Status status =
+          optimizer->Optimize(cluster, optimized_item, optimized_graph);
+      uint64 end_us = Env::Default()->NowMicros();
+
+      string result;
+      if (!status.ok()) {
+        optimized_graph->Swap(&optimized_item.graph);
+        result = status.ToString();
+      } else {
+        is_optimized = true;
+        float duration_ms = (end_us - start_us) / 1000.0f;
+        result = strings::StrCat(
+            PrintSizesBeforeAfter(optimized_item.graph, *optimized_graph),
+            ", time = ", duration_ms, "ms.");
       }
-      if (optimizer->name() == "xla-fusion") {
-        if (fusion_optimizer == nullptr) fusion_optimizer = optimizer.get();
-        continue;
-      }
-      Status status = RunOptimizer(optimizer.get(), cluster, &optimized_item,
-                                   optimized_graph, &optimization_result);
-      if (status.ok()) is_optimized = true;
+      VLOG(4) << optimizer->name() << ": " << result;
+
+      OptimizerResult optimizer_result{optimizer->name(), result};
+      optimization_result.results.push_back(optimizer_result);
     }
-  }
-
-  // Run fusion optimizer if requested after all other optimizers since: 1) it
-  // doesn't need to be called more than once. 2) we don't want subsequent
-  // optimization passes to break the fusion clusters. We could potentially
-  // encapsulate the fusion clusters right away, but that will prevent a lot of
-  // optimizations from taking place since we don't have shape inference for
-  // functions, and we can't optimize across function boundaries.
-  if (fusion_optimizer != nullptr) {
-    Status status = RunOptimizer(fusion_optimizer, cluster, &optimized_item,
-                                 optimized_graph, &optimization_result);
-    if (status.ok()) is_optimized = true;
-  }
-
-  // ScopedAllocatorOptimizer must run last.
-  if (sa_optimizer != nullptr) {
-    Status status = RunOptimizer(sa_optimizer, cluster, &optimized_item,
-                                 optimized_graph, &optimization_result);
-    if (status.ok()) is_optimized = true;
   }
 
   // Record graph optimization result.
@@ -291,35 +284,6 @@ Status MetaOptimizer::OptimizeGraph(Cluster* cluster, const GrapplerItem& item,
   }
 
   return Status::OK();
-}
-
-Status MetaOptimizer::RunOptimizer(
-    GraphOptimizer* optimizer, Cluster* cluster, GrapplerItem* optimized_item,
-    GraphDef* optimized_graph, GraphOptimizationResult* optimization_result) {
-  uint64 start_us = Env::Default()->NowMicros();
-  // This swaps the current optimized_graph into optimized item and
-  // resets optimized_graph to an empty graph.
-  optimized_graph->Swap(&optimized_item->graph);
-  *optimized_graph = GraphDef();
-  Status status =
-      optimizer->Optimize(cluster, *optimized_item, optimized_graph);
-  uint64 end_us = Env::Default()->NowMicros();
-
-  string result;
-  if (!status.ok()) {
-    optimized_graph->Swap(&optimized_item->graph);
-    result = status.ToString();
-  } else {
-    float duration_ms = (end_us - start_us) / 1000.0f;
-    result = strings::StrCat(
-        PrintSizesBeforeAfter(optimized_item->graph, *optimized_graph),
-        ", time = ", duration_ms, "ms.");
-  }
-  VLOG(1) << optimizer->name() << ": " << result;
-
-  OptimizerResult optimizer_result{optimizer->name(), result};
-  optimization_result->results.push_back(optimizer_result);
-  return status;
 }
 
 Status MetaOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,

@@ -20,14 +20,14 @@ from __future__ import print_function
 
 import numpy as np
 
-from tensorflow.compiler.tests import xla_test
+from tensorflow.compiler.tests.xla_test import XLATestCase
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import gen_control_flow_ops
 from tensorflow.python.platform import test
 
 
-class XlaDeviceTest(xla_test.XLATestCase):
+class XlaDeviceTest(XLATestCase):
 
   def testCopies(self):
     """Tests that copies onto and off XLA devices work."""

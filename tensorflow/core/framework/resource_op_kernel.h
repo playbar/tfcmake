@@ -43,15 +43,9 @@ template <typename T>
 class ResourceOpKernel : public OpKernel {
  public:
   explicit ResourceOpKernel(OpKernelConstruction* context) : OpKernel(context) {
-    has_resource_type_ = (context->output_type(0) == DT_RESOURCE);
-    if (!has_resource_type_) {
-      // The resource variant of the op may be placed on non-CPU devices, but
-      // this allocation is always on the host. Fortunately we don't need it in
-      // the resource case.
-      OP_REQUIRES_OK(context,
-                     context->allocate_persistent(DT_STRING, TensorShape({2}),
-                                                  &handle_, nullptr));
-    }
+    OP_REQUIRES_OK(context,
+                   context->allocate_persistent(DT_STRING, TensorShape({2}),
+                                                &handle_, nullptr));
   }
 
   // The resource is deleted from the resource manager only when it is private
@@ -95,14 +89,12 @@ class ResourceOpKernel : public OpKernel {
         return;
       }
 
-      if (!has_resource_type_) {
-        auto h = handle_.AccessTensor(context)->template flat<string>();
-        h(0) = cinfo_.container();
-        h(1) = cinfo_.name();
-      }
+      auto h = handle_.AccessTensor(context)->template flat<string>();
+      h(0) = cinfo_.container();
+      h(1) = cinfo_.name();
       resource_ = resource;
     }
-    if (has_resource_type_) {
+    if (context->expected_output_dtype(0) == DT_RESOURCE) {
       OP_REQUIRES_OK(context, MakeResourceHandleToOutput(
                                   context, 0, cinfo_.container(), cinfo_.name(),
                                   MakeTypeIndex<T>()));
@@ -130,9 +122,6 @@ class ResourceOpKernel : public OpKernel {
   virtual Status VerifyResource(T* resource) { return Status::OK(); }
 
   PersistentTensor handle_ GUARDED_BY(mu_);
-
-  // Is the output of the operator of type DT_RESOURCE?
-  bool has_resource_type_;
 };
 }  // namespace tensorflow
 

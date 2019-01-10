@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from tensorflow.compiler.tests import xla_test
+from tensorflow.compiler.tests.xla_test import XLATestCase
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import gen_array_ops
@@ -68,7 +68,7 @@ def space_to_batch_direct(input_array, block_shape, paddings):
   return permuted_reshaped_padded.reshape(output_shape)
 
 
-class SpaceToBatchTest(xla_test.XLATestCase):
+class SpaceToBatchTest(XLATestCase):
   """Tests input-output pairs for the SpaceToBatch and BatchToSpace ops."""
 
   def _testPad(self, inputs, paddings, block_size, outputs):
@@ -149,7 +149,7 @@ class SpaceToBatchTest(xla_test.XLATestCase):
     self._testOne(x_np, block_size, x_out)
 
 
-class SpaceToBatchNDTest(xla_test.XLATestCase):
+class SpaceToBatchNDTest(XLATestCase):
   """Tests input-output pairs for the SpaceToBatchND and BatchToSpaceND ops."""
 
   def _testPad(self, inputs, block_shape, paddings, outputs):

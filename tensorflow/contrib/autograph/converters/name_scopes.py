@@ -20,11 +20,11 @@ from __future__ import print_function
 
 import gast
 
-from tensorflow.contrib.autograph.core import converter
 from tensorflow.contrib.autograph.pyct import templates
+from tensorflow.contrib.autograph.pyct import transformer
 
 
-class FunctionNameScopeTransformer(converter.Base):
+class FunctionNameScopeTransformer(transformer.Base):
   """Wrap a function body with a `name_scope` of the function name."""
 
   def _name_for_current_scope(self):
@@ -70,5 +70,5 @@ class FunctionNameScopeTransformer(converter.Base):
     return node
 
 
-def transform(node, ctx):
-  return FunctionNameScopeTransformer(ctx).visit(node)
+def transform(node, context):
+  return FunctionNameScopeTransformer(context).visit(node)

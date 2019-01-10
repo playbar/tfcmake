@@ -377,10 +377,7 @@ class SdcaWithLogisticLossTest(SdcaModelTest):
         train_op.run()
 
   def testDistributedSimple(self):
-    # Distributed SDCA may not converge if the workers update concurrently the
-    # same example. In this test the examples are partitioned across workers.
-    # The examples are the same for all workers, just the example_ids are
-    # different.
+    # Setup test data
     example_protos = [
         make_example_proto({
             'age': [0],
@@ -392,19 +389,13 @@ class SdcaWithLogisticLossTest(SdcaModelTest):
         }, 1),
     ]
     example_weights = [1.0, 1.0]
-    examples = make_example_dict(example_protos, example_weights)
-    example_ids = array_ops.placeholder(
-        dtypes.string, shape=(len(example_weights),))
-    examples['example_ids'] = example_ids
-    variables = make_variable_dict(1, 1)
     for num_shards in _SHARD_NUMBERS:
       for num_loss_partitions in _NUM_LOSS_PARTITIONS:
         with self._single_threaded_test_session():
+          examples = make_example_dict(example_protos, example_weights)
+          variables = make_variable_dict(1, 1)
           options = dict(
-              # Keep the same solution as for TestSimple: since the number of
-              # examples is multplied by num_loss_partitions, multiply also
-              # L2 by the same value.
-              symmetric_l2_regularization=num_loss_partitions,
+              symmetric_l2_regularization=1,
               symmetric_l1_regularization=0,
               loss_type='logistic_loss',
               num_table_shards=num_shards,
@@ -420,30 +411,32 @@ class SdcaWithLogisticLossTest(SdcaModelTest):
 
           train_op = lr.minimize()
 
-          def minimize(worker_id):
+          def minimize():
             with self._single_threaded_test_session():
-              feed_dict = {example_ids: [
-                  str(i + worker_id*len(example_weights)) for i in range(
-                      len(example_weights))]}
               for _ in range(_MAX_ITERATIONS):
-                train_op.run(feed_dict=feed_dict)  # pylint: disable=cell-var-from-loop
+                train_op.run()  # pylint: disable=cell-var-from-loop
 
           threads = []
-          for worker_id in range(num_loss_partitions):
-            threads.append(threading.Thread(target=minimize, args=(worker_id,)))
+          for _ in range(num_loss_partitions):
+            threads.append(threading.Thread(target=minimize))
             threads[-1].start()
 
           for t in threads:
             t.join()
-          lr.update_weights(train_op).run(feed_dict={
-              example_ids: [str(i) for i in range(len(example_weights))]})
+          lr.update_weights(train_op).run()
 
-          # Test only the unregularized loss because the optimal value of the
-          # regularized loss depends on num_loss_partitions.
-          self.assertAllClose(0.411608, unregularized_loss.eval(), atol=0.02)
+          # The high tolerance in unregularized_loss comparisons is due to the
+          # fact that it's possible to trade off unregularized_loss vs.
+          # regularization and still have a sum that is quite close to the
+          # optimal regularized_loss value.  SDCA's duality gap only ensures
+          # that the regularized_loss is within 0.01 of optimal.
+          # 0.525457 is the optimal regularized_loss.
+          # 0.411608 is the unregularized_loss at that optimum.
+          self.assertAllClose(0.411608, unregularized_loss.eval(), atol=0.05)
+          self.assertAllClose(0.525457, loss.eval(), atol=0.01)
           predicted_labels = get_binary_predictions_for_logistic(predictions)
           self.assertAllEqual([0, 1], predicted_labels.eval())
-          self.assertNear(0.0, lr.approximate_duality_gap().eval(), 0.02)
+          self.assertTrue(lr.approximate_duality_gap().eval() < 0.02)
 
   def testSimpleNoL2(self):
     # Same as test above (so comments from above apply) but without an L2.

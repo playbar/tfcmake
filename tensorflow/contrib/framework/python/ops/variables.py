@@ -34,7 +34,6 @@ from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import resource_variable_ops
 from tensorflow.python.ops import variable_scope
-from tensorflow.python.ops import variables
 from tensorflow.python.platform import resource_loader
 from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.training import saver as tf_saver
@@ -200,20 +199,10 @@ def global_variable(initial_value,
 
 
 @contrib_add_arg_scope
-def variable(name,
-             shape=None,
-             dtype=None,
-             initializer=None,
-             regularizer=None,
-             trainable=True,
-             collections=None,
-             caching_device=None,
-             device=None,
-             partitioner=None,
-             custom_getter=None,
-             use_resource=None,
-             synchronization=variables.VariableSynchronization.AUTO,
-             aggregation=variables.VariableAggregation.NONE):
+def variable(name, shape=None, dtype=None, initializer=None,
+             regularizer=None, trainable=True, collections=None,
+             caching_device=None, device=None,
+             partitioner=None, custom_getter=None, use_resource=None):
   """Gets an existing variable with these parameters or creates a new one.
 
   Args:
@@ -239,15 +228,6 @@ def variable(name,
     custom_getter: Callable that allows overwriting the internal
       get_variable method and has to have the same signature.
     use_resource: If `True` use a ResourceVariable instead of a Variable.
-    synchronization: Indicates when a distributed a variable will be
-      aggregated. Accepted values are constants defined in the class
-      @{tf.VariableSynchronization}. By default the synchronization is set to
-      `AUTO` and the current `DistributionStrategy` chooses
-      when to synchronize. If `synchronization` is set to `ON_READ`,
-      `trainable` must not be set to `True`.
-    aggregation: Indicates how a distributed variable will be aggregated.
-      Accepted values are constants defined in the class
-      @{tf.VariableAggregation}.
 
   Returns:
     The created or existing variable.
@@ -262,36 +242,21 @@ def variable(name,
     getter = functools.partial(custom_getter,
                                reuse=variable_scope.get_variable_scope().reuse)
   with ops.device(device or ''):
-    return getter(
-        name,
-        shape=shape,
-        dtype=dtype,
-        initializer=initializer,
-        regularizer=regularizer,
-        trainable=trainable,
-        collections=collections,
-        caching_device=caching_device,
-        partitioner=partitioner,
-        use_resource=use_resource,
-        synchronization=synchronization,
-        aggregation=aggregation)
+    return getter(name, shape=shape, dtype=dtype,
+                  initializer=initializer,
+                  regularizer=regularizer,
+                  trainable=trainable,
+                  collections=collections,
+                  caching_device=caching_device,
+                  partitioner=partitioner,
+                  use_resource=use_resource)
 
 
 @contrib_add_arg_scope
-def model_variable(name,
-                   shape=None,
-                   dtype=dtypes.float32,
-                   initializer=None,
-                   regularizer=None,
-                   trainable=True,
-                   collections=None,
-                   caching_device=None,
-                   device=None,
-                   partitioner=None,
-                   custom_getter=None,
-                   use_resource=None,
-                   synchronization=variables.VariableSynchronization.AUTO,
-                   aggregation=variables.VariableAggregation.NONE):
+def model_variable(name, shape=None, dtype=dtypes.float32, initializer=None,
+                   regularizer=None, trainable=True, collections=None,
+                   caching_device=None, device=None, partitioner=None,
+                   custom_getter=None, use_resource=None):
   """Gets an existing model variable with these parameters or creates a new one.
 
   Args:
@@ -318,36 +283,18 @@ def model_variable(name,
     custom_getter: Callable that allows overwriting the internal
       get_variable method and has to have the same signature.
     use_resource: If `True` use a ResourceVariable instead of a Variable.
-    synchronization: Indicates when a distributed a variable will be
-      aggregated. Accepted values are constants defined in the class
-      @{tf.VariableSynchronization}. By default the synchronization is set to
-      `AUTO` and the current `DistributionStrategy` chooses
-      when to synchronize. If `synchronization` is set to `ON_READ`,
-      `trainable` must not be set to `True`.
-    aggregation: Indicates how a distributed variable will be aggregated.
-      Accepted values are constants defined in the class
-      @{tf.VariableAggregation}.
 
   Returns:
     The created or existing variable.
   """
   collections = list(collections or [])
   collections += [ops.GraphKeys.GLOBAL_VARIABLES, ops.GraphKeys.MODEL_VARIABLES]
-  var = variable(
-      name,
-      shape=shape,
-      dtype=dtype,
-      initializer=initializer,
-      regularizer=regularizer,
-      trainable=trainable,
-      collections=collections,
-      caching_device=caching_device,
-      device=device,
-      partitioner=partitioner,
-      custom_getter=custom_getter,
-      use_resource=use_resource,
-      synchronization=synchronization,
-      aggregation=aggregation)
+  var = variable(name, shape=shape, dtype=dtype,
+                 initializer=initializer, regularizer=regularizer,
+                 trainable=trainable, collections=collections,
+                 caching_device=caching_device, device=device,
+                 partitioner=partitioner, custom_getter=custom_getter,
+                 use_resource=use_resource)
   return var
 
 
@@ -765,8 +712,7 @@ class VariableDeviceChooser(object):
                num_tasks=0,
                job_name='ps',
                device_type='CPU',
-               device_index=0,
-               replica=None):
+               device_index=0):
     """Initialize VariableDeviceChooser.
 
     Usage:
@@ -787,15 +733,12 @@ class VariableDeviceChooser(object):
     self._job_name = job_name
     self._device_type = device_type
     self._device_index = device_index
-    self._replica = replica
     self._num_tasks = num_tasks
     self._next_task_id = 0
 
   def __call__(self, op):
-    device_spec = tf_device.DeviceSpec(
-        replica=self._replica,
-        device_type=self._device_type,
-        device_index=self._device_index)
+    device_spec = tf_device.DeviceSpec(device_type=self._device_type,
+                                       device_index=self._device_index)
     if self._num_tasks > 0:
       task_id = self._next_task_id
       self._next_task_id = (self._next_task_id + 1) % self._num_tasks

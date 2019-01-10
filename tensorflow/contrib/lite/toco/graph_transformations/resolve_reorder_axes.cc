@@ -51,12 +51,11 @@ void ReorderAxes(AxesOrder input_axes_order, AxesOrder output_axes_order,
 }
 
 bool ResolveReorderAxes::Run(Model* model, std::size_t op_index) {
-  auto it = model->operators.begin() + op_index;
-  auto* op = it->get();
-  if (op->type != OperatorType::kReorderAxes) {
+  auto reorder_it = model->operators.begin() + op_index;
+  auto* reorder_op = static_cast<ReorderAxesOperator*>(reorder_it->get());
+  if (reorder_op->type != OperatorType::kReorderAxes) {
     return false;
   }
-  auto* reorder_op = static_cast<ReorderAxesOperator*>(op);
   const auto& input_array_name = reorder_op->inputs[0];
   const auto& output_array_name = reorder_op->outputs[0];
   auto& input_array = model->GetArray(input_array_name);
@@ -96,7 +95,7 @@ bool ResolveReorderAxes::Run(Model* model, std::size_t op_index) {
 
   // Remove the op and output array.
   model->EraseArray(output_array_name);
-  model->operators.erase(it);
+  model->operators.erase(reorder_it);
   return true;
 }
 

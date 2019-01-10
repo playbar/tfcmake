@@ -18,7 +18,6 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
 #include "tensorflow/compiler/xla/client/lib/arithmetic.h"
-#include "tensorflow/compiler/xla/client/xla_client/xla_builder.h"
 #include "tensorflow/core/framework/op_kernel.h"
 
 namespace tensorflow {
@@ -37,22 +36,22 @@ class BucketizeOp : public XlaOpKernel {
     const DataType dtype = context->input_type(0);
     xla::XlaOp input = context->Input(0);
 
-    xla::XlaOp boundaries = xla::ConstantR1<float>(builder, boundaries_);
+    xla::XlaOp boundaries = builder->ConstantR1<float>(boundaries_);
     // TODO(phawkins): the following behavior matches the behavior of the core
     // Bucketize kernel. However, comparing an int32 or int64 against float may
     // lead to inaccurate bucketing due to rounding.
     if (dtype == DT_DOUBLE) {
-      input = xla::ConvertElementType(input, xla::F64);
-      boundaries = xla::ConvertElementType(boundaries, xla::F64);
+      input = builder->ConvertElementType(input, xla::F64);
+      boundaries = builder->ConvertElementType(boundaries, xla::F64);
     } else {
-      input = xla::ConvertElementType(input, xla::F32);
+      input = builder->ConvertElementType(input, xla::F32);
     }
-    xla::XlaOp comparison =
-        xla::ConvertElementType(xla::Ge(xla::Broadcast(input, {1}), boundaries,
-                                        /*broadcast_dimensions=*/{0}),
-                                xla::S32);
-    xla::XlaOp buckets = xla::Reduce(
-        comparison, /*init_value=*/xla::ConstantR0<int32>(builder, 0),
+    xla::XlaOp comparison = builder->ConvertElementType(
+        builder->Ge(builder->Broadcast(input, {1}), boundaries,
+                    /*broadcast_dimensions=*/{0}),
+        xla::S32);
+    xla::XlaOp buckets = builder->Reduce(
+        comparison, /*init_value=*/builder->ConstantR0<int32>(0),
         /*computation=*/xla::CreateScalarAddComputation(xla::S32, builder),
         /*dimensions_to_reduce=*/{0});
     context->SetOutput(0, buckets);

@@ -6,7 +6,7 @@
 * Update `tf.keras` to the Keras 2.1.6 API.
 * Added [`tf.keras.layers.CuDNNGRU`](https://www.tensorflow.org/versions/r1.9/api_docs/python/tf/keras/layers/CuDNNGRU) and [`tf.keras.layers.CuDNNLSTM`](https://www.tensorflow.org/versions/r1.9/api_docs/python/tf/keras/layers/CuDNNLSTM) layers. [Try it](https://colab.sandbox.google.com/github/tensorflow/tensorflow/blob/master/tensorflow/contrib/eager/python/examples/nmt_with_attention/nmt_with_attention.ipynb?linkId=53292082).
 * Adding support of core [feature columns](https://www.tensorflow.org/get_started/feature_columns) and [losses](https://www.tensorflow.org/api_docs/python/tf/losses) to [gradient boosted trees estimators](https://github.com/tensorflow/models/tree/master/official/boosted_trees).
-* The [python interface](https://www.tensorflow.org/versions/r1.9/api_docs/python/tf/contrib/lite)
+* The [python interface](https://tensorflow-dot-devsite.googleplex.com/versions/r1.9/api_docs/python/tf/contrib/lite)
   for the [TFLite Optimizing Converter](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/lite/toco/README.md)
   has been expanded, and the command line interface (AKA: `toco`, `tflite_convert`) is once again
   included in the standard `pip` installation.
@@ -33,6 +33,7 @@
   * Using `tf.keras.layers` with custom variable scopes.
   * Using `tf.layers` in  a subclassed `tf.keras.Model` class. See
     [here](https://www.tensorflow.org/versions/r1.9/api_docs/python/tf/layers) for more details
+
 * `tf.data`:
   * `Dataset.from_generator()` now accepts an `args` list, in order to create nested generators.
   * `Dataset.list_files()` now produces determinstic results when `shuffle=False` or a `seed` is passed.
@@ -488,6 +489,14 @@ answered questions, and were part of inspiring discussions.
 ## Major Features And Improvements
 * `tf.keras` is now part of the core TensorFlow API.
 * [`tf.data`](http://tensorflow.org/guide/datasets) is now part of
+  the core TensorFlow API.
+  * The API is now subject to backwards compatibility guarantees.
+
+# Release 1.4.0
+
+## Major Features And Improvements
+* `tf.keras` is now part of the core TensorFlow API.
+* [`tf.data`](http://tensorflow.org/programmers_guide/datasets) is now part of
   the core TensorFlow API.
   * The API is now subject to backwards compatibility guarantees.
   * For a guide to migrating from the `tf.contrib.data` API, see the

@@ -87,18 +87,6 @@ ExecutableBuildOptions::dump_optimized_hlo_proto_to() const {
   return dump_optimized_hlo_proto_to_;
 }
 
-ExecutableBuildOptions&
-ExecutableBuildOptions::set_dump_unoptimized_hlo_proto_to(
-    tensorflow::StringPiece dirpath) {
-  dump_unoptimized_hlo_proto_to_ = dirpath.ToString();
-  return *this;
-}
-
-const tensorflow::gtl::optional<string>&
-ExecutableBuildOptions::dump_unoptimized_hlo_proto_to() const {
-  return dump_unoptimized_hlo_proto_to_;
-}
-
 ExecutableBuildOptions& ExecutableBuildOptions::set_dump_per_pass_hlo_proto_to(
     tensorflow::StringPiece dirpath) {
   dump_per_pass_hlo_proto_to_ = dirpath.ToString();

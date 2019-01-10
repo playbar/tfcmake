@@ -63,9 +63,9 @@ Status GroupShape(const VarDimArray& input_shape, ShapeArray* grouped_shape) {
 
 // Build `SparseTensor` from indices, values, and shape in inputs
 // [base_index, base_index + 3), and validate its rank and indices.
-Status SparseTensorFromContext(OpKernelContext* ctx, const int32 base_index,
-                               bool validate_indices,
-                               sparse::SparseTensor* tensor) {
+sparse::SparseTensor SparseTensorFromContext(OpKernelContext* ctx,
+                                             const int32 base_index,
+                                             bool validate_indices) {
   // Assume row-major order.
   const TensorShape shape =
       TensorShape(ctx->input(base_index + 2).vec<int64>());
@@ -73,8 +73,13 @@ Status SparseTensorFromContext(OpKernelContext* ctx, const int32 base_index,
   std::vector<int64> order(shape.dims());
   std::iota(order.begin(), order.end(), 0);
 
-  return sparse::SparseTensor::Create(
-      ctx->input(base_index), ctx->input(base_index + 1), shape, order, tensor);
+  const sparse::SparseTensor st(ctx->input(base_index),
+                                ctx->input(base_index + 1), shape, order);
+  if (validate_indices) {
+    Status s = st.IndicesValid();
+    if (!s.ok()) ctx->SetStatus(s);
+  }
+  return st;
 }
 
 // TODO(ptucker): CheckGroup is just a sanity check on the result of
@@ -248,13 +253,11 @@ class SetSizeOp : public OpKernel {
 
 template <typename T>
 void SetSizeOp<T>::Compute(OpKernelContext* ctx) {
-  sparse::SparseTensor set_st;
-  OP_REQUIRES_OK(ctx,
-                 SparseTensorFromContext(ctx, 0, validate_indices_, &set_st));
-  OP_REQUIRES_OK(ctx, set_st.IndicesValid());
+  const sparse::SparseTensor set_st =
+      SparseTensorFromContext(ctx, 0, validate_indices_);
 
-  // Output shape is same as input except for last dimension, which reduces
-  // to the set size of values along that dimension.
+  // Output shape is same as input except for last dimension, which reduces to
+  // the set size of values along that dimension.
   ShapeArray output_shape;
   OP_REQUIRES_OK(ctx, GroupShape(set_st.shape(), &output_shape));
   const auto output_strides = Strides(output_shape);
@@ -481,10 +484,8 @@ void SetOperationOp<T>::ComputeDenseToDense(OpKernelContext* ctx) const {
 template <typename T>
 void SetOperationOp<T>::ComputeDenseToSparse(OpKernelContext* ctx) const {
   const Tensor& set1_t = ctx->input(0);
-  sparse::SparseTensor set2_st;
-  OP_REQUIRES_OK(ctx,
-                 SparseTensorFromContext(ctx, 1, validate_indices_, &set2_st));
-  OP_REQUIRES_OK(ctx, set2_st.IndicesValid());
+  const sparse::SparseTensor set2_st =
+      SparseTensorFromContext(ctx, 1, validate_indices_);
   // The following should stay in sync with `_dense_to_sparse_shape` shape
   // assertions in python/ops/set_ops.py, and `SetShapeFn` for
   // `DenseToSparseSetOperation` in ops/set_ops.cc.
@@ -596,15 +597,10 @@ const std::vector<int64> GROUP_ITER_END;
 // with the same first n-1 dimensions in set1 and set2.
 template <typename T>
 void SetOperationOp<T>::ComputeSparseToSparse(OpKernelContext* ctx) const {
-  sparse::SparseTensor set1_st;
-  OP_REQUIRES_OK(ctx,
-                 SparseTensorFromContext(ctx, 0, validate_indices_, &set1_st));
-  OP_REQUIRES_OK(ctx, set1_st.IndicesValid());
-
-  sparse::SparseTensor set2_st;
-  OP_REQUIRES_OK(ctx,
-                 SparseTensorFromContext(ctx, 3, validate_indices_, &set2_st));
-
+  const sparse::SparseTensor set1_st =
+      SparseTensorFromContext(ctx, 0, validate_indices_);
+  const sparse::SparseTensor set2_st =
+      SparseTensorFromContext(ctx, 3, validate_indices_);
   // The following should stay in sync with `_sparse_to_sparse_shape` shape
   // assertions in python/ops/set_ops.py, and `SetShapeFn` for
   // `SparseToSparseSetOperation` in ops/set_ops.cc.

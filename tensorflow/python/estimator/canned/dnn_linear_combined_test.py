@@ -100,8 +100,7 @@ def _linear_regressor_fn(feature_columns,
                          weight_column=None,
                          optimizer='Ftrl',
                          config=None,
-                         partitioner=None,
-                         sparse_combiner='sum'):
+                         partitioner=None):
   return dnn_linear_combined.DNNLinearCombinedRegressor(
       model_dir=model_dir,
       linear_feature_columns=feature_columns,
@@ -109,8 +108,7 @@ def _linear_regressor_fn(feature_columns,
       label_dimension=label_dimension,
       weight_column=weight_column,
       input_layer_partitioner=partitioner,
-      config=config,
-      linear_sparse_combiner=sparse_combiner)
+      config=config)
 
 
 class LinearOnlyRegressorPartitionerTest(
@@ -165,8 +163,7 @@ def _linear_classifier_fn(feature_columns,
                           label_vocabulary=None,
                           optimizer='Ftrl',
                           config=None,
-                          partitioner=None,
-                          sparse_combiner='sum'):
+                          partitioner=None):
   return dnn_linear_combined.DNNLinearCombinedClassifier(
       model_dir=model_dir,
       linear_feature_columns=feature_columns,
@@ -175,8 +172,7 @@ def _linear_classifier_fn(feature_columns,
       weight_column=weight_column,
       label_vocabulary=label_vocabulary,
       input_layer_partitioner=partitioner,
-      config=config,
-      linear_sparse_combiner=sparse_combiner)
+      config=config)
 
 
 class LinearOnlyClassifierTrainingTest(

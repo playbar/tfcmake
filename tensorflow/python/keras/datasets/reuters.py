@@ -75,10 +75,9 @@ def load_data(path='reuters.npz',
   if kwargs:
     raise TypeError('Unrecognized keyword arguments: ' + str(kwargs))
 
-  origin_folder = 'https://storage.googleapis.com/tensorflow/tf-keras-datasets/'
   path = get_file(
       path,
-      origin=origin_folder + 'reuters.npz',
+      origin='https://s3.amazonaws.com/text-datasets/reuters.npz',
       file_hash='87aedbeb0cb229e378797a632c1997b6')
   with np.load(path) as f:
     xs, labels = f['x'], f['y']
@@ -125,10 +124,11 @@ def get_word_index(path='reuters_word_index.json'):
   Returns:
       The word index dictionary.
   """
-  origin_folder = 'https://storage.googleapis.com/tensorflow/tf-keras-datasets/'
   path = get_file(
       path,
-      origin=origin_folder + 'reuters_word_index.json',
+      origin='https://s3.amazonaws.com/text-datasets/reuters_word_index.json',
       file_hash='4d44cc38712099c9e383dc6e5f11a921')
-  with open(path) as f:
-    return json.load(f)
+  f = open(path)
+  data = json.load(f)
+  f.close()
+  return data

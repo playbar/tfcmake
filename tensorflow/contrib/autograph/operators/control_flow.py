@@ -51,7 +51,7 @@ def for_stmt(iter_, extra_test, body, init_state):
   Args:
     iter_: The entity being iterated over.
     extra_test: Callable with the state as arguments, and boolean return type.
-        An additional loop condition.
+        An additionnal loop condition.
     body: Callable with the iterate and the state as arguments, and
         state as return type. The actual loop body.
     init_state: Tuple containing the initial state.

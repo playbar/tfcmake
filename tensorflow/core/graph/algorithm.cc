@@ -25,8 +25,7 @@ namespace tensorflow {
 
 void DFS(const Graph& g, const std::function<void(Node*)>& enter,
          const std::function<void(Node*)>& leave,
-         const NodeComparator& stable_comparator,
-         const EdgeFilter& edge_filter) {
+         const NodeComparator& stable_comparator) {
   // Stack of work to do.
   struct Work {
     Node* node;
@@ -53,6 +52,7 @@ void DFS(const Graph& g, const std::function<void(Node*)>& enter,
     // Arrange to call leave(n) when all done with descendants.
     if (leave) stack.push_back(Work{n, true});
 
+    gtl::iterator_range<NeighborIter> nodes = n->out_nodes();
     auto add_work = [&visited, &stack](Node* out) {
       if (!visited[out->id()]) {
         // Note; we must not mark as visited until we actually process it.
@@ -62,20 +62,16 @@ void DFS(const Graph& g, const std::function<void(Node*)>& enter,
 
     if (stable_comparator) {
       std::vector<Node*> nodes_sorted;
-      for (const Edge* out_edge : n->out_edges()) {
-        if (!edge_filter || edge_filter(*out_edge)) {
-          nodes_sorted.emplace_back(out_edge->dst());
-        }
+      for (Node* out : nodes) {
+        nodes_sorted.emplace_back(out);
       }
       std::sort(nodes_sorted.begin(), nodes_sorted.end(), stable_comparator);
       for (Node* out : nodes_sorted) {
         add_work(out);
       }
     } else {
-      for (const Edge* out_edge : n->out_edges()) {
-        if (!edge_filter || edge_filter(*out_edge)) {
-          add_work(out_edge->dst());
-        }
+      for (Node* out : nodes) {
+        add_work(out);
       }
     }
   }
@@ -122,6 +118,8 @@ void ReverseDFSFromHelper(const Graph& g, gtl::ArraySlice<T> start,
     // Arrange to call leave(n) when all done with descendants.
     if (leave) stack.push_back(Work{n, true});
 
+    gtl::iterator_range<NeighborIter> nodes = n->in_nodes();
+
     auto add_work = [&visited, &stack](T out) {
       if (!visited[out->id()]) {
         // Note; we must not mark as visited until we actually process it.
@@ -131,16 +129,16 @@ void ReverseDFSFromHelper(const Graph& g, gtl::ArraySlice<T> start,
 
     if (stable_comparator) {
       std::vector<T> nodes_sorted;
-      for (const Edge* in_edge : n->in_edges()) {
-        nodes_sorted.emplace_back(in_edge->src());
+      for (T in : nodes) {
+        nodes_sorted.emplace_back(in);
       }
       std::sort(nodes_sorted.begin(), nodes_sorted.end(), stable_comparator);
       for (T in : nodes_sorted) {
         add_work(in);
       }
     } else {
-      for (const Edge* in_edge : n->in_edges()) {
-        add_work(in_edge->src());
+      for (T in : nodes) {
+        add_work(in);
       }
     }
   }
@@ -163,17 +161,14 @@ void ReverseDFSFrom(const Graph& g, gtl::ArraySlice<Node*> start,
 }
 
 void GetPostOrder(const Graph& g, std::vector<Node*>* order,
-                  const NodeComparator& stable_comparator,
-                  const EdgeFilter& edge_filter) {
+                  const NodeComparator& stable_comparator) {
   order->clear();
-  DFS(g, nullptr, [order](Node* n) { order->push_back(n); }, stable_comparator,
-      edge_filter);
+  DFS(g, nullptr, [order](Node* n) { order->push_back(n); }, stable_comparator);
 }
 
 void GetReversePostOrder(const Graph& g, std::vector<Node*>* order,
-                         const NodeComparator& stable_comparator,
-                         const EdgeFilter& edge_filter) {
-  GetPostOrder(g, order, stable_comparator, edge_filter);
+                         const NodeComparator& stable_comparator) {
+  GetPostOrder(g, order, stable_comparator);
   std::reverse(order->begin(), order->end());
 }
 

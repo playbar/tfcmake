@@ -184,6 +184,7 @@ def dense(
                 bias_constraint=bias_constraint,
                 trainable=trainable,
                 name=name,
+                dtype=inputs.dtype.base_dtype,
                 _scope=name,
                 _reuse=reuse)
   return layer.apply(inputs)

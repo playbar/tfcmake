@@ -18,26 +18,30 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow.contrib.autograph.converters import converter_test_base
 from tensorflow.contrib.autograph.converters import name_scopes
-from tensorflow.contrib.autograph.core import converter_testing
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import ops
 from tensorflow.python.platform import test
 
 
-class FunctionNameScopeTransformer(converter_testing.TestCase):
+class FunctionNameScopeTransformer(converter_test_base.TestCase):
 
   def test_basic(self):
 
     def test_fn(l):
       """This should stay here."""
-      a = 1
+      a = 5
       l += a
       return l
 
-    with self.converted(test_fn, name_scopes, {}, ops.name_scope) as result:
+    node = self.parse_and_analyze(test_fn, {})
+    node = name_scopes.transform(node, self.ctx)
+
+    with self.compiled(node, ops.name_scope) as result:
       result_op = result.test_fn(constant_op.constant(1))
       self.assertIn('test_fn/', result_op.op.name)
+
       self.assertEqual('This should stay here.', result.test_fn.__doc__)
 
   def test_long_docstring(self):
@@ -50,12 +54,13 @@ class FunctionNameScopeTransformer(converter_testing.TestCase):
       Returns:
         l
       """
-      return l + 1
+      return l
 
-    with self.converted(test_fn, name_scopes, {}, ops.name_scope) as result:
-      result_op = result.test_fn(constant_op.constant(1))
-      self.assertIn('test_fn/', result_op.op.name)
-      self.assertIn('Multi-line docstring.', result.test_fn.__doc__)
+    node = self.parse_and_analyze(test_fn, {})
+    node = name_scopes.transform(node, self.ctx)
+
+    with self.compiled(node, ops.name_scope) as result:
+      self.assertIn('Multi-line', result.test_fn.__doc__)
       self.assertIn('Returns:', result.test_fn.__doc__)
 
   def test_nested_functions(self):
@@ -63,16 +68,21 @@ class FunctionNameScopeTransformer(converter_testing.TestCase):
     def test_fn(l):
 
       def inner_fn(i):
-        return i + 1
+        return i ** 2
 
-      l += 1
-      return l, inner_fn(l)
+      l += 4
+      return inner_fn(l)
 
-    with self.converted(test_fn, name_scopes, {}, ops.name_scope) as result:
-      first, second = result.test_fn(constant_op.constant(1))
-      self.assertIn('test_fn/', first.op.name)
-      self.assertNotIn('inner_fn', first.op.name)
-      self.assertIn('test_fn/inner_fn/', second.op.name)
+    node = self.parse_and_analyze(test_fn, {})
+    node = name_scopes.transform(node, self.ctx)
+
+    with self.compiled(node, ops.name_scope) as result:
+      result_op = result.test_fn(constant_op.constant(1))
+      first_result_input_name = result_op.op.inputs[0].name
+      second_result_input_name = result_op.op.inputs[1].name
+      self.assertIn('test_fn/', first_result_input_name)
+      self.assertNotIn('inner_fn', first_result_input_name)
+      self.assertIn('test_fn/inner_fn/', second_result_input_name)
 
   def test_method(self):
 
@@ -81,20 +91,48 @@ class FunctionNameScopeTransformer(converter_testing.TestCase):
       def test_fn(self, l):
 
         def inner_fn(i):
-          return i + 1
+          return i ** 2
 
-        l += 1
-        return l, inner_fn(l)
+        l += 4
+        return inner_fn(l)
 
-    ns = {'TestClass': TestClass}
-    node, ctx = self.prepare(TestClass, ns, owner_type=TestClass)
-    node = name_scopes.transform(node, ctx)
+    # Note that 'TestClass' was needed in the namespace here.
+    node = self.parse_and_analyze(
+        TestClass, {'TestClass': TestClass}, owner_type=TestClass)
+    node = name_scopes.transform(node, self.ctx)
 
-    with self.compiled(node, {}, ops.name_scope) as result:
-      first, second = result.TestClass().test_fn(constant_op.constant(1))
-      self.assertIn('TestClass/test_fn/', first.op.name)
-      self.assertNotIn('inner_fn', first.op.name)
-      self.assertIn('TestClass/test_fn/inner_fn/', second.op.name)
+    with self.compiled(node, ops.name_scope) as result:
+      result_op = result.TestClass().test_fn(constant_op.constant(1))
+      first_result_input_name = result_op.op.inputs[0].name
+      second_result_input_name = result_op.op.inputs[1].name
+      self.assertIn('TestClass/test_fn/', first_result_input_name)
+      self.assertNotIn('inner_fn', first_result_input_name)
+      self.assertIn('TestClass/test_fn/inner_fn/', second_result_input_name)
+
+  def test_operator(self):
+
+    class TestClass(object):
+
+      def __call__(self, l):
+
+        def inner_fn(i):
+          return i ** 2
+
+        l += 4
+        return inner_fn(l)
+
+    # Note that 'TestClass' was needed in the namespace here.
+    node = self.parse_and_analyze(
+        TestClass.__call__, {'TestClass': TestClass}, owner_type=TestClass)
+    node = name_scopes.transform(node, self.ctx)
+
+    with self.compiled(node, ops.name_scope) as result:
+      result_op = result.__call__(TestClass(), constant_op.constant(1))
+      first_result_input_name = result_op.op.inputs[0].name
+      second_result_input_name = result_op.op.inputs[1].name
+      self.assertIn('call__/', first_result_input_name)
+      self.assertNotIn('inner_fn', first_result_input_name)
+      self.assertIn('call__/inner_fn/', second_result_input_name)
 
 
 if __name__ == '__main__':

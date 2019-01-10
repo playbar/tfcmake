@@ -33,7 +33,7 @@ from tensorflow.python.ops import variable_scope
 from tensorflow.python.ops.losses import losses
 from tensorflow.python.summary import summary
 from tensorflow.python.training import ftrl
-from tensorflow.python.util.tf_export import estimator_export
+from tensorflow.python.util.tf_export import tf_export
 
 
 # The default learning rate of 0.2 is a historical artifact of the initial
@@ -66,15 +66,13 @@ def _compute_fraction_of_zero(cols_to_vars):
   return nn.zero_fraction(array_ops.concat(all_weight_vars, axis=0))
 
 
-def _linear_logit_fn_builder(units, feature_columns, sparse_combiner='sum'):
+def _linear_logit_fn_builder(units, feature_columns):
   """Function builder for a linear logit_fn.
 
   Args:
     units: An int indicating the dimension of the logit layer.
     feature_columns: An iterable containing all the feature columns used by
       the model.
-    sparse_combiner: A string specifying how to reduce if a categorical column
-      is multivalent.  One of "mean", "sqrtn", and "sum".
 
   Returns:
     A logit_fn (see below).
@@ -97,7 +95,6 @@ def _linear_logit_fn_builder(units, feature_columns, sparse_combiner='sum'):
         features=features,
         feature_columns=feature_columns,
         units=units,
-        sparse_combiner=sparse_combiner,
         cols_to_vars=cols_to_vars)
     bias = cols_to_vars.pop('bias')
     if units > 1:
@@ -114,7 +111,7 @@ def _linear_logit_fn_builder(units, feature_columns, sparse_combiner='sum'):
 
 
 def _linear_model_fn(features, labels, mode, head, feature_columns, optimizer,
-                     partitioner, config, sparse_combiner='sum'):
+                     partitioner, config):
   """A model_fn for linear models that use a gradient-based optimizer.
 
   Args:
@@ -129,8 +126,6 @@ def _linear_model_fn(features, labels, mode, head, feature_columns, optimizer,
       optimizer to use for training. If `None`, will use a FTRL optimizer.
     partitioner: Partitioner for variables.
     config: `RunConfig` object to configure the runtime settings.
-    sparse_combiner: A string specifying how to reduce if a categorical column
-      is multivalent.  One of "mean", "sqrtn", and "sum".
 
   Returns:
     An `EstimatorSpec` instance.
@@ -158,8 +153,7 @@ def _linear_model_fn(features, labels, mode, head, feature_columns, optimizer,
       partitioner=partitioner):
 
     logit_fn = _linear_logit_fn_builder(
-        units=head.logits_dimension, feature_columns=feature_columns,
-        sparse_combiner=sparse_combiner)
+        units=head.logits_dimension, feature_columns=feature_columns)
     logits = logit_fn(features=features)
 
     return head.create_estimator_spec(
@@ -170,7 +164,7 @@ def _linear_model_fn(features, labels, mode, head, feature_columns, optimizer,
         logits=logits)
 
 
-@estimator_export('estimator.LinearClassifier')
+@tf_export('estimator.LinearClassifier')
 class LinearClassifier(estimator.Estimator):
   """Linear classifier model.
 
@@ -198,17 +192,6 @@ class LinearClassifier(estimator.Estimator):
         learning_rate=0.1,
         l1_regularization_strength=0.001
       ))
-
-  # Or estimator using an optimizer with a learning rate decay.
-  estimator = LinearClassifier(
-      feature_columns=[categorical_column_a,
-                       categorical_feature_a_x_categorical_feature_b],
-      optimizer=lambda: tf.train.FtrlOptimizer(
-          learning_rate=tf.exponential_decay(
-              learning_rate=0.1,
-              global_step=tf.get_global_step(),
-              decay_steps=10000,
-              decay_rate=0.96))
 
   # Or estimator with warm-starting from a previous checkpoint.
   estimator = LinearClassifier(
@@ -244,10 +227,7 @@ class LinearClassifier(estimator.Estimator):
   Loss is calculated by using softmax cross entropy.
 
   @compatibility(eager)
-  Estimators can be used while eager execution is enabled. Note that `input_fn`
-  and all hooks are executed inside a graph context, so they have to be written
-  to be compatible with graph mode. Note that `input_fn` code using `tf.data`
-  generally works in both graph and eager modes.
+  Estimators are not compatible with eager execution.
   @end_compatibility
   """
 
@@ -261,8 +241,7 @@ class LinearClassifier(estimator.Estimator):
                config=None,
                partitioner=None,
                warm_start_from=None,
-               loss_reduction=losses.Reduction.SUM,
-               sparse_combiner='sum'):
+               loss_reduction=losses.Reduction.SUM):
     """Construct a `LinearClassifier` estimator object.
 
     Args:
@@ -290,9 +269,8 @@ class LinearClassifier(estimator.Estimator):
         encoded as integer values in {0, 1,..., n_classes-1} for `n_classes`>2 .
         Also there will be errors if vocabulary is not provided and labels are
         string.
-      optimizer: An instance of `tf.Optimizer` used to train the model. Can also
-        be a string (one of 'Adagrad', 'Adam', 'Ftrl', 'RMSProp', 'SGD'), or
-        callable. Defaults to FTRL optimizer.
+      optimizer: An instance of `tf.Optimizer` used to train the model. Defaults
+        to FTRL optimizer.
       config: `RunConfig` object to configure the runtime settings.
       partitioner: Optional. Partitioner for input layer.
       warm_start_from: A string filepath to a checkpoint to warm-start from, or
@@ -302,11 +280,6 @@ class LinearClassifier(estimator.Estimator):
         and Tensor names are unchanged.
       loss_reduction: One of `tf.losses.Reduction` except `NONE`. Describes how
         to reduce training loss over batch. Defaults to `SUM`.
-      sparse_combiner: A string specifying how to reduce if a categorical column
-        is multivalent.  One of "mean", "sqrtn", and "sum" -- these are
-        effectively different ways to do example-level normalization, which can
-        be useful for bag-of-words features. for more details, see
-        @{tf.feature_column.linear_model$linear_model}.
 
     Returns:
       A `LinearClassifier` estimator.
@@ -335,8 +308,7 @@ class LinearClassifier(estimator.Estimator):
           feature_columns=tuple(feature_columns or []),
           optimizer=optimizer,
           partitioner=partitioner,
-          config=config,
-          sparse_combiner=sparse_combiner)
+          config=config)
 
     super(LinearClassifier, self).__init__(
         model_fn=_model_fn,
@@ -345,7 +317,7 @@ class LinearClassifier(estimator.Estimator):
         warm_start_from=warm_start_from)
 
 
-@estimator_export('estimator.LinearRegressor')
+@tf_export('estimator.LinearRegressor')
 class LinearRegressor(estimator.Estimator):
   """An estimator for TensorFlow Linear regression problems.
 
@@ -360,30 +332,9 @@ class LinearRegressor(estimator.Estimator):
 
   categorical_feature_a_x_categorical_feature_b = crossed_column(...)
 
-  # Estimator using the default optimizer.
   estimator = LinearRegressor(
       feature_columns=[categorical_column_a,
                        categorical_feature_a_x_categorical_feature_b])
-
-  # Or estimator using the FTRL optimizer with regularization.
-  estimator = LinearRegressor(
-      feature_columns=[categorical_column_a,
-                       categorical_feature_a_x_categorical_feature_b],
-      optimizer=tf.train.FtrlOptimizer(
-        learning_rate=0.1,
-        l1_regularization_strength=0.001
-      ))
-
-  # Or estimator using an optimizer with a learning rate decay.
-  estimator = LinearRegressor(
-      feature_columns=[categorical_column_a,
-                       categorical_feature_a_x_categorical_feature_b],
-      optimizer=lambda: tf.train.FtrlOptimizer(
-          learning_rate=tf.exponential_decay(
-              learning_rate=0.1,
-              global_step=tf.get_global_step(),
-              decay_steps=10000,
-              decay_rate=0.96))
 
   # Or estimator with warm-starting from a previous checkpoint.
   estimator = LinearRegressor(
@@ -419,10 +370,7 @@ class LinearRegressor(estimator.Estimator):
   Loss is calculated by using mean squared error.
 
   @compatibility(eager)
-  Estimators can be used while eager execution is enabled. Note that `input_fn`
-  and all hooks are executed inside a graph context, so they have to be written
-  to be compatible with graph mode. Note that `input_fn` code using `tf.data`
-  generally works in both graph and eager modes.
+  Estimators are not compatible with eager execution.
   @end_compatibility
   """
 
@@ -435,8 +383,7 @@ class LinearRegressor(estimator.Estimator):
                config=None,
                partitioner=None,
                warm_start_from=None,
-               loss_reduction=losses.Reduction.SUM,
-               sparse_combiner='sum'):
+               loss_reduction=losses.Reduction.SUM):
     """Initializes a `LinearRegressor` instance.
 
     Args:
@@ -456,9 +403,8 @@ class LinearRegressor(estimator.Estimator):
         used as a key to fetch weight tensor from the `features`. If it is a
         `_NumericColumn`, raw tensor is fetched by key `weight_column.key`,
         then weight_column.normalizer_fn is applied on it to get weight tensor.
-      optimizer: An instance of `tf.Optimizer` used to train the model. Can also
-        be a string (one of 'Adagrad', 'Adam', 'Ftrl', 'RMSProp', 'SGD'), or
-        callable. Defaults to FTRL optimizer.
+      optimizer: An instance of `tf.Optimizer` used to train the model. Defaults
+        to FTRL optimizer.
       config: `RunConfig` object to configure the runtime settings.
       partitioner: Optional. Partitioner for input layer.
       warm_start_from: A string filepath to a checkpoint to warm-start from, or
@@ -468,11 +414,6 @@ class LinearRegressor(estimator.Estimator):
         and Tensor names are unchanged.
       loss_reduction: One of `tf.losses.Reduction` except `NONE`. Describes how
         to reduce training loss over batch. Defaults to `SUM`.
-      sparse_combiner: A string specifying how to reduce if a categorical column
-        is multivalent.  One of "mean", "sqrtn", and "sum" -- these are
-        effectively different ways to do example-level normalization, which can
-        be useful for bag-of-words features. for more details, see
-        @{tf.feature_column.linear_model$linear_model}.
     """
     head = head_lib._regression_head(  # pylint: disable=protected-access
         label_dimension=label_dimension, weight_column=weight_column,
@@ -488,8 +429,7 @@ class LinearRegressor(estimator.Estimator):
           feature_columns=tuple(feature_columns or []),
           optimizer=optimizer,
           partitioner=partitioner,
-          config=config,
-          sparse_combiner=sparse_combiner)
+          config=config)
 
     super(LinearRegressor, self).__init__(
         model_fn=_model_fn,

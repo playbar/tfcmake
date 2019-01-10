@@ -650,8 +650,7 @@ class UnaryElementwiseRewriter : public ScopedAllocatorOptimizer::Rewriter {
 };
 
 ScopedAllocatorOptimizer::ScopedAllocatorOptimizer(
-    RewriterConfig::Toggle opt_level, const ScopedAllocatorOptions& opts)
-    : opt_level_(opt_level) {
+    const ScopedAllocatorOptions& opts) {
   VLOG(1) << "ScopedAllocatorOptimizer::ScopedAllocatorOptimizer";
   Rewriter* r = new UnaryElementwiseRewriter();
   to_delete_.push_back(r);

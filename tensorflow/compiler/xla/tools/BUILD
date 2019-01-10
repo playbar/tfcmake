@@ -74,7 +74,7 @@ cc_library(
     srcs = ["replay_computation.cc"],
     deps = [
         "//tensorflow/compiler/xla:execution_options_util",
-        "//tensorflow/compiler/xla:literal",
+        "//tensorflow/compiler/xla:literal_util",
         "//tensorflow/compiler/xla:shape_util",
         "//tensorflow/compiler/xla:status_macros",
         "//tensorflow/compiler/xla:statusor",
@@ -85,7 +85,6 @@ cc_library(
         "//tensorflow/compiler/xla/client:global_data",
         "//tensorflow/compiler/xla/client:local_client",
         "//tensorflow/compiler/xla/client/lib:testing",
-        "//tensorflow/compiler/xla/service:hlo_parser",
         "//tensorflow/compiler/xla/service:hlo_proto",
         "//tensorflow/compiler/xla/service/gpu:infeed_manager",
         "//tensorflow/compiler/xla/tests:test_utils",
@@ -123,7 +122,7 @@ tf_cc_binary(
     name = "show_literal",
     srcs = ["show_literal.cc"],
     deps = [
-        "//tensorflow/compiler/xla:literal",
+        "//tensorflow/compiler/xla:literal_util",
         "//tensorflow/compiler/xla:types",
         "//tensorflow/compiler/xla:xla_data_proto",
         "//tensorflow/core:lib",
@@ -136,7 +135,7 @@ tf_cc_binary(
     deps = [
         "//tensorflow/compiler/xla:statusor",
         "//tensorflow/compiler/xla:types",
-        "//tensorflow/compiler/xla/service:hlo_proto",
+        "//tensorflow/compiler/xla/service:session_proto",
         "//tensorflow/core:lib",
     ],
 )
@@ -145,7 +144,7 @@ tf_cc_binary(
     name = "show_text_literal",
     srcs = ["show_text_literal.cc"],
     deps = [
-        "//tensorflow/compiler/xla:literal",
+        "//tensorflow/compiler/xla:literal_util",
         "//tensorflow/compiler/xla:statusor",
         "//tensorflow/compiler/xla:text_literal_reader",
         "//tensorflow/compiler/xla:types",

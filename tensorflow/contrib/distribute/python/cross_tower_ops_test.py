@@ -24,7 +24,6 @@ from absl.testing import parameterized
 
 from tensorflow.contrib.distribute.python import combinations
 from tensorflow.contrib.distribute.python import cross_tower_ops as cross_tower_ops_lib
-from tensorflow.contrib.distribute.python import multi_worker_test_base
 from tensorflow.contrib.distribute.python import values as value_lib
 from tensorflow.python.eager import context
 from tensorflow.python.eager import test
@@ -32,12 +31,11 @@ from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import variable_scope as vs
 from tensorflow.python.training import device_util
 
 
 def _make_per_device(values, devices):
-  devices = cross_tower_ops_lib.get_devices_from(devices)
+  devices = cross_tower_ops_lib._get_devices_from(devices)
   assert len(values) == len(devices)
   index = {}
   for d, v in zip(devices, values):
@@ -54,7 +52,7 @@ def _fake_mirrored(value, devices):
   All components of the returned Mirrored have the same objects, which is not
   true in reality.
   """
-  devices = cross_tower_ops_lib.get_devices_from(devices)
+  devices = cross_tower_ops_lib._get_devices_from(devices)
   return value_lib.Mirrored(
       {d: v for d, v in zip(devices, [value] * len(devices))})
 
@@ -77,7 +75,7 @@ def _make_mirrored_indexed_slices(devices, values, indices, dense_shape):
 _cpu_device = "/device:CPU:0"
 
 
-class CrossTowerOpsTestBase(test.TestCase, parameterized.TestCase):
+class CrossTowerOpsTest(test.TestCase, parameterized.TestCase):
 
   def _assert_indexed_slices_equal(self, left, right):
     self.assertIsInstance(left, ops.IndexedSlices)
@@ -94,7 +92,7 @@ class CrossTowerOpsTestBase(test.TestCase, parameterized.TestCase):
         self._assert_values_equal(l, r)
     else:
       self.assertEqual(type(left), type(right))
-      self.assertEqual(set(left.devices), set(right.devices))
+      self.assertEqual(left.devices, right.devices)
       if isinstance(list(left._index.values())[0], ops.IndexedSlices):
         for (d, v) in left._index.items():
           self._assert_indexed_slices_equal(v, right._index[d])
@@ -106,81 +104,6 @@ class CrossTowerOpsTestBase(test.TestCase, parameterized.TestCase):
           self.assertEqual(
               sess.run(list(left._index.values())), list(right._index.values()))
 
-  def _testReductionAndBroadcast(self, cross_tower_ops, distribution):
-    devices = distribution.worker_devices
-
-    values = [constant_op.constant(float(d)) for d in range(len(devices))]
-    per_device = _make_per_device(values, devices)
-    mean = (len(devices) - 1.) / 2.
-
-    values_2 = [constant_op.constant(d + 1.0) for d in range(len(devices))]
-    per_device_2 = _make_per_device(values_2, devices)
-    mean_2 = mean + 1.
-
-    destination_mirrored = _fake_mirrored(1., devices)
-    destination_different = _fake_mirrored(1., _cpu_device)
-    destination_str = _cpu_device
-    destination_list = devices
-
-    all_destinations = [
-        None, destination_mirrored, destination_different, destination_str,
-        destination_list
-    ]
-
-    # test reduce()
-    for destinations in all_destinations:
-      self._assert_values_equal(
-          cross_tower_ops.reduce(
-              vs.VariableAggregation.MEAN,
-              per_device,
-              destinations=destinations),
-          _fake_mirrored(mean, destinations or per_device))
-      self._assert_values_equal(
-          cross_tower_ops.reduce(
-              vs.VariableAggregation.MEAN,
-              per_device_2,
-              destinations=destinations),
-          _fake_mirrored(mean_2, destinations or per_device))
-      self._assert_values_equal(
-          cross_tower_ops.reduce(
-              vs.VariableAggregation.SUM, per_device,
-              destinations=destinations),
-          _fake_mirrored(mean * len(devices), destinations or per_device))
-      self._assert_values_equal(
-          cross_tower_ops.reduce(
-              vs.VariableAggregation.SUM,
-              per_device_2,
-              destinations=destinations),
-          _fake_mirrored(mean_2 * len(devices), destinations or per_device))
-
-    # test batch_reduce()
-    for d1, d2 in itertools.product(all_destinations, all_destinations):
-      self._assert_values_equal(
-          cross_tower_ops.batch_reduce(vs.VariableAggregation.MEAN,
-                                       [(per_device, d1), (per_device_2, d2)]),
-          [
-              _fake_mirrored(mean, d1 or per_device),
-              _fake_mirrored(mean_2, d2 or per_device_2)
-          ])
-      self._assert_values_equal(
-          cross_tower_ops.batch_reduce(vs.VariableAggregation.SUM,
-                                       [(per_device, d1), (per_device_2, d2)]),
-          [
-              _fake_mirrored(mean * len(devices), d1 or per_device),
-              _fake_mirrored(mean_2 * len(devices), d2 or per_device_2)
-          ])
-
-    # test broadcast()
-    for destinations in all_destinations:
-      if destinations is None:
-        continue
-      else:
-        self._assert_values_equal(
-            cross_tower_ops.broadcast(constant_op.constant(1.), destinations),
-            _fake_mirrored(1., destinations))
-
-
-class SingleWorkerCrossTowerOpsTest(CrossTowerOpsTestBase):
   # TODO(yuefengz): decouple the num_gpus check from distribution in
   # combinations module so that we can pass in devices instead of a distribution
   # strategy.
@@ -226,23 +149,79 @@ class SingleWorkerCrossTowerOpsTest(CrossTowerOpsTestBase):
 
   @combinations.generate(reduction_to_one_combinations + allreduce_combinations)
   def testReductionAndBroadcast(self, cross_tower_ops, distribution):
-    with distribution.scope():
-      self._testReductionAndBroadcast(cross_tower_ops, distribution)
+    devices = distribution.worker_devices
+
+    values = [constant_op.constant(float(d)) for d in range(len(devices))]
+    per_device = _make_per_device(values, devices)
+    mean = (len(devices) - 1.) / 2.
+
+    values_2 = [constant_op.constant(d + 1.0) for d in range(len(devices))]
+    per_device_2 = _make_per_device(values_2, devices)
+    mean_2 = mean + 1.
+
+    destination_mirrored = _fake_mirrored(1., devices)
+    destination_different = _fake_mirrored(1., _cpu_device)
+    destination_str = _cpu_device
+    destination_list = devices
+
+    all_destinations = [
+        None, destination_mirrored, destination_different, destination_str,
+        destination_list
+    ]
+
+    # test reduce()
+    for destinations in all_destinations:
+      self._assert_values_equal(
+          cross_tower_ops.reduce("mean", per_device, destinations=destinations),
+          _fake_mirrored(mean, destinations or per_device))
+      self._assert_values_equal(
+          cross_tower_ops.reduce(
+              "mean", per_device_2, destinations=destinations),
+          _fake_mirrored(mean_2, destinations or per_device))
+      self._assert_values_equal(
+          cross_tower_ops.reduce("sum", per_device, destinations=destinations),
+          _fake_mirrored(mean * len(devices), destinations or per_device))
+      self._assert_values_equal(
+          cross_tower_ops.reduce(
+              "sum", per_device_2, destinations=destinations),
+          _fake_mirrored(mean_2 * len(devices), destinations or per_device))
+
+    # test batch_reduce()
+    for d1, d2 in itertools.product(all_destinations, all_destinations):
+      self._assert_values_equal(
+          cross_tower_ops.batch_reduce(
+              "mean", [(per_device, d1), (per_device_2, d2)]),
+          [_fake_mirrored(mean, d1 or per_device),
+           _fake_mirrored(mean_2, d2 or per_device_2)])
+      self._assert_values_equal(
+          cross_tower_ops.batch_reduce(
+              "sum", [(per_device, d1), (per_device_2, d2)]),
+          [_fake_mirrored(mean * len(devices), d1 or per_device),
+           _fake_mirrored(mean_2 * len(devices), d2 or per_device_2)])
+
+    # test broadcast()
+    for destinations in all_destinations:
+      if destinations is None:
+        continue
+      else:
+        self._assert_values_equal(
+            cross_tower_ops.broadcast(constant_op.constant(1.), destinations),
+            _fake_mirrored(1., destinations))
 
   def testChooseAlgorithm(self):
     device_links = [[1, 2, 3, 4], [0, 2, 3, 5], [0, 1, 3, 6], [0, 1, 2, 7],
                     [0, 5, 6, 7], [1, 4, 6, 7], [2, 4, 5, 7], [3, 4, 5, 6]]
     result = cross_tower_ops_lib._choose_all_reduce_algorithm(device_links)
     self.assertIsInstance(result, cross_tower_ops_lib.AllReduceCrossTowerOps)
-    self.assertEqual(result._all_reduce_alg, "hierarchical_copy")
-    self.assertEqual(result._num_packs, 8)
+    self.assertEqual(result.all_reduce_alg, "hierarchical_copy")
+    self.assertEqual(result.num_packs, 8)
 
     # if there are only 4 devices
     device_links = [[1, 2, 3, 4], [0, 2, 3, 5], [0, 1, 3, 6], [0, 1, 2, 7]]
     result = cross_tower_ops_lib._choose_all_reduce_algorithm(device_links)
     self.assertIsInstance(result, cross_tower_ops_lib.AllReduceCrossTowerOps)
-    self.assertEqual(result._all_reduce_alg, "nccl")
-    self.assertEqual(result._num_packs, 1)
+    self.assertEqual(result.all_reduce_alg, "nccl")
+    self.assertEqual(result.num_packs, 1)
 
     # if devices links contain each device itself
     device_links = [[0, 1, 2, 3, 4], [0, 1, 2, 3, 5], [0, 1, 2, 3, 6],
@@ -250,16 +229,16 @@ class SingleWorkerCrossTowerOpsTest(CrossTowerOpsTestBase):
                     [2, 4, 5, 6, 7], [3, 4, 5, 6, 7]]
     result = cross_tower_ops_lib._choose_all_reduce_algorithm(device_links)
     self.assertIsInstance(result, cross_tower_ops_lib.AllReduceCrossTowerOps)
-    self.assertEqual(result._all_reduce_alg, "hierarchical_copy")
-    self.assertEqual(result._num_packs, 8)
+    self.assertEqual(result.all_reduce_alg, "hierarchical_copy")
+    self.assertEqual(result.num_packs, 8)
 
     # if not dgx1-like links
     device_links = [[0, 2, 3, 5], [0, 1, 3, 6], [0, 1, 2, 7], [0, 5, 6, 7],
                     [1, 4, 6, 7], [2, 4, 5, 7], [3, 4, 5, 6], [1, 2, 3, 4]]
     result = cross_tower_ops_lib._choose_all_reduce_algorithm(device_links)
     self.assertIsInstance(result, cross_tower_ops_lib.AllReduceCrossTowerOps)
-    self.assertEqual(result._all_reduce_alg, "nccl")
-    self.assertEqual(result._num_packs, 1)
+    self.assertEqual(result.all_reduce_alg, "nccl")
+    self.assertEqual(result.num_packs, 1)
 
   @combinations.generate(combinations.combine(
       mode=["graph", "eager"],
@@ -269,8 +248,8 @@ class SingleWorkerCrossTowerOpsTest(CrossTowerOpsTestBase):
     t0 = _make_indexed_slices([[1., 2.]], [1], [5, 2], devices[0])
     t1 = _make_indexed_slices([[3., 4.], [5., 6.]], [1, 3], [5, 2], devices[1])
     per_device = value_lib.PerDevice({devices[0]: t0, devices[1]: t1})
-    result = cross_tower_ops_lib._simple_reduce(
-        per_device, devices[0], math_ops.add_n, vs.VariableAggregation.SUM)
+    result = cross_tower_ops_lib._simple_reduce(per_device, devices[0],
+                                                math_ops.add_n, "sum")
 
     # Test that the result is semantically equal to both the concatenated
     # IndexedSlices with and without duplicate indices.
@@ -281,22 +260,21 @@ class SingleWorkerCrossTowerOpsTest(CrossTowerOpsTestBase):
     self._assert_indexed_slices_equal(total_with_dups, result)
     self._assert_indexed_slices_equal(total_without_dups, result)
 
-  @combinations.generate(
-      combinations.combine(
-          cross_tower_ops_instance=[
-              combinations.NamedObject(
-                  "ReductionToOneDeviceCrossTowerOps",
-                  cross_tower_ops_lib.ReductionToOneDeviceCrossTowerOps()),
-              combinations.NamedObject(
-                  "AllReduceCrossTowerOps",
-                  cross_tower_ops_lib.AllReduceCrossTowerOps())
-          ],
-          aggregation=[vs.VariableAggregation.SUM, vs.VariableAggregation.MEAN],
-          batch_reduce=[True, False],
-          mode=["graph", "eager"],
-          required_gpus=1))
-  def testIndexedSlicesAllReduce(self, cross_tower_ops_instance, aggregation,
-                                 batch_reduce):
+  @combinations.generate(combinations.combine(
+      cross_tower_ops_instance=[
+          combinations.NamedObject(
+              "ReductionToOneDeviceCrossTowerOps",
+              cross_tower_ops_lib.ReductionToOneDeviceCrossTowerOps()),
+          combinations.NamedObject(
+              "AllReduceCrossTowerOps",
+              cross_tower_ops_lib.AllReduceCrossTowerOps())
+      ],
+      method_string=["sum", "mean"],
+      batch_reduce=[True, False],
+      mode=["graph", "eager"],
+      required_gpus=1))
+  def testIndexedSlicesAllReduce(self, cross_tower_ops_instance,
+                                 method_string, batch_reduce):
     devices = ["/cpu:0", "/gpu:0"]
     dense_shape = [5, 2]
     t0 = _make_indexed_slices([[1., 2.]], [1], dense_shape, devices[0])
@@ -305,19 +283,20 @@ class SingleWorkerCrossTowerOpsTest(CrossTowerOpsTestBase):
     per_device = value_lib.PerDevice({devices[0]: t0, devices[1]: t1})
 
     if batch_reduce:
-      result = cross_tower_ops_instance.batch_reduce(aggregation,
+      result = cross_tower_ops_instance.batch_reduce(method_string,
                                                      [(per_device, devices)])
     else:
-      result = cross_tower_ops_instance.reduce(aggregation, per_device, devices)
+      result = cross_tower_ops_instance.reduce(method_string, per_device,
+                                               devices)
 
     total_indices_with_dups = [1, 1, 3]
     total_indices_without_dups = [1, 3]
 
-    if aggregation == vs.VariableAggregation.SUM:
+    if method_string == "sum":
       total_values_with_dups = [[1., 2.], [3., 4.], [5., 6.]]
       total_values_without_dups = [[4., 6.], [5., 6.]]
     else:
-      assert aggregation == vs.VariableAggregation.MEAN
+      assert method_string == "mean"
       total_values_with_dups = [[0.5, 1.], [1.5, 2.], [2.5, 3.]]
       total_values_without_dups = [[2., 3.], [2.5, 3.]]
 
@@ -335,45 +314,6 @@ class SingleWorkerCrossTowerOpsTest(CrossTowerOpsTestBase):
 
     self._assert_values_equal(total_mirrored_with_dups, result)
     self._assert_values_equal(total_mirrored_without_dups, result)
-
-
-class MultiWorkerCrossTowerOpsTest(multi_worker_test_base.MultiWorkerTestBase,
-                                   CrossTowerOpsTestBase):
-
-  worker_devices = [
-      "/job:worker/replica:0/task:0", "/job:worker/replica:0/task:1"
-  ]
-  multi_worker_allreduce_combinations = combinations.combine(
-      cross_tower_ops=[
-          combinations.NamedObject(
-              "MultiWorkerAllReduce",
-              cross_tower_ops_lib.MultiWorkerAllReduce(
-                  worker_devices, 2, ("pscpu/pscpu", 2, -1), 0, 0, 0)),
-          combinations.NamedObject(
-              "MultiWorkerAllReducePack",
-              cross_tower_ops_lib.MultiWorkerAllReduce(
-                  worker_devices, 2, ("pscpu/pscpu", 2, -1), 1, 0, 0)),
-          combinations.NamedObject(
-              "MultiWorkerAllReduceAggregation",
-              cross_tower_ops_lib.MultiWorkerAllReduce(
-                  worker_devices, 2, ("pscpu/pscpu", 2, -1), 0, 100, 10)),
-          combinations.NamedObject(
-              "MultiWorkerAllReduceMultipleSpecs",
-              cross_tower_ops_lib.MultiWorkerAllReduce(
-                  worker_devices, 2, [("pscpu/pscpu", 2, 100),
-                                      ("xring", 2, -1)], 0, 0, 0)),
-      ],
-      distribution=[
-          combinations.multi_worker_strategy_with_cpu,
-          combinations.multi_worker_strategy_with_one_gpu,
-          combinations.multi_worker_strategy_with_two_gpus
-      ],
-      mode=["graph"])
-
-  @combinations.generate(multi_worker_allreduce_combinations)
-  def testReductionAndBroadcast(self, cross_tower_ops, distribution):
-    with distribution.scope():
-      self._testReductionAndBroadcast(cross_tower_ops, distribution)
 
 
 if __name__ == "__main__":

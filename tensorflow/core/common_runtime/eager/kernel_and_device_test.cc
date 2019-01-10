@@ -107,8 +107,8 @@ void BM_KernelAndDeviceInit(int iters) {
   KernelAndDevice k(nullptr);
   tensorflow::testing::StartTiming();
   for (int i = 0; i < iters; ++i) {
-    TF_CHECK_OK(KernelAndDevice::Init(ndef, env.function_library_runtime(),
-                                      nullptr, &k));
+    TF_CHECK_OK(
+        KernelAndDevice::Init(ndef, env.function_library_runtime(), &k));
   }
 }
 BENCHMARK(BM_KernelAndDeviceInit);
@@ -128,8 +128,8 @@ void BM_KernelAndDeviceRun(int iters) {
                    .BuildNodeDef());
   TestEnv env;
   KernelAndDevice kernel(nullptr);
-  TF_CHECK_OK(KernelAndDevice::Init(ndef, env.function_library_runtime(),
-                                    nullptr, &kernel));
+  TF_CHECK_OK(
+      KernelAndDevice::Init(ndef, env.function_library_runtime(), &kernel));
   tensorflow::testing::StartTiming();
   for (int i = 0; i < iters; ++i) {
     TF_CHECK_OK(kernel.Run(&inputs, &outputs, nullptr));

@@ -18,7 +18,7 @@ limitations under the License.
 
 #include "tensorflow/compiler/xla/client/local_client.h"
 #include "tensorflow/compiler/xla/client/xla_client/xla_builder.h"
-#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/compiler/xla/primitive_util.h"
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/test.h"
@@ -53,8 +53,8 @@ template <typename T>
 std::unique_ptr<Literal> PrngTest::UniformTest(
     T a, T b, tensorflow::gtl::ArraySlice<int64> dims, int64 seed) {
   XlaBuilder builder(TestName());
-  RngUniform(
-      ConstantR0<T>(&builder, a), ConstantR0<T>(&builder, b),
+  builder.RngUniform(
+      builder.ConstantR0<T>(a), builder.ConstantR0<T>(b),
       ShapeUtil::MakeShape(primitive_util::NativeToPrimitiveType<T>(), dims));
 
   SetSeed(seed);
@@ -141,9 +141,9 @@ double PrngTest::UniformChiSquared(int32 range_size, int32 expected_count,
   int32 sample_size = range_size * expected_count;
 
   XlaBuilder builder(TestName());
-  RngUniform(ConstantR0<int32>(&builder, 0),
-             ConstantR0<int32>(&builder, range_size),
-             ShapeUtil::MakeShape(S32, {sample_size}));
+  builder.RngUniform(builder.ConstantR0<int32>(0),
+                     builder.ConstantR0<int32>(range_size),
+                     ShapeUtil::MakeShape(S32, {sample_size}));
 
   SetSeed(seed);
   auto actual =
@@ -177,29 +177,28 @@ XLA_TEST_F(PrngTest, Uniformity108) {
   EXPECT_LT(UniformChiSquared(108, 256), 132.144);
 }
 XLA_TEST_F(PrngTest, Uniformity256) {
-  EXPECT_LT(UniformChiSquared(256, 512), 293.248);
+  EXPECT_LT(UniformChiSquared(256, 256), 293.248);
 }
 
 XLA_TEST_F(PrngTest, MapUsingRng) {
   // Build a x -> (x + U[0,1)) computation.
   auto build_sum_rng = [this](XlaBuilder& builder) {
     auto b = builder.CreateSubBuilder("sum_with_rng");
-    auto x = Parameter(b.get(), 0, ShapeUtil::MakeShape(F32, {}), "input");
-    Add(x,
-        RngUniform(ConstantR0<float>(b.get(), 0), ConstantR0<float>(b.get(), 1),
-                   ShapeUtil::MakeShape(F32, {})));
+    auto x = b->Parameter(0, ShapeUtil::MakeShape(F32, {}), "input");
+    b->Add(x, b->RngUniform(b->ConstantR0<float>(0), b->ConstantR0<float>(1),
+                            ShapeUtil::MakeShape(F32, {})));
     return b->BuildAndNoteError();
   };
 
   XlaBuilder builder(TestName());
   std::unique_ptr<Literal> param0_literal =
-      LiteralUtil::CreateR1<float>({2.2f, 5.3f, 4.4f, 5.5f});
+      Literal::CreateR1<float>({2.2f, 5.3f, 4.4f, 5.5f});
   TF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<GlobalData> param0_data,
                           client_->TransferToServer(*param0_literal));
 
-  auto param0 = Parameter(&builder, 0, param0_literal->shape(), "param0");
+  auto param0 = builder.Parameter(0, param0_literal->shape(), "param0");
   auto fn = build_sum_rng(builder);
-  Map(&builder, {param0}, fn, {0});
+  builder.Map({param0}, fn, {0});
 
   TF_ASSERT_OK_AND_ASSIGN(auto computation, builder.Build());
 
@@ -227,8 +226,9 @@ XLA_TEST_F(PrngTest, PassInGlobalRngSeed) {
   // Build a U[0,1) computation.
   auto build_computation = [this]() {
     XlaBuilder builder(TestName());
-    RngUniform(ConstantR0<float>(&builder, 0), ConstantR0<float>(&builder, 1),
-               ShapeUtil::MakeShape(F32, {10}));
+    builder.RngUniform(builder.ConstantR0<float>(0),
+                       builder.ConstantR0<float>(1),
+                       ShapeUtil::MakeShape(F32, {10}));
     return builder.Build();
   };
 
@@ -282,8 +282,8 @@ XLA_TEST_F(PrngTest, PassInGlobalRngSeed) {
 
 XLA_TEST_F(PrngTest, TenValuesN01) {
   XlaBuilder builder(TestName());
-  RngNormal(ConstantR0<float>(&builder, 0), ConstantR0<float>(&builder, 1),
-            ShapeUtil::MakeShape(F32, {10}));
+  builder.RngNormal(builder.ConstantR0<float>(0), builder.ConstantR0<float>(1),
+                    ShapeUtil::MakeShape(F32, {10}));
 
   SetSeed(42);
   ExecuteAndTransfer(&builder, /*arguments=*/{}).ConsumeValueOrDie();
@@ -294,9 +294,9 @@ XLA_TEST_F(PrngTest, RngUniformCrash) {
   XlaBuilder builder(TestName());
 
   // This used to crash XLA during LLVM IR generation for CPUs.
-  RngUniform(ConstantR0<int32>(&builder, 0),
-             ConstantR0<int32>(&builder, 1000 * 1000),
-             ShapeUtil::MakeShape(S32, {}));
+  auto rng_uniform = builder.RngUniform(builder.ConstantR0<int32>(0),
+                                        builder.ConstantR0<int32>(1000 * 1000),
+                                        ShapeUtil::MakeShape(S32, {}));
   SetSeed(0);
   ExecuteAndTransfer(&builder, /*arguments=*/{}).ConsumeValueOrDie();
 }

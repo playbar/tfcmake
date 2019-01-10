@@ -22,7 +22,7 @@
 include (ExternalProject)
 
 # We parse the current Eigen version and archive hash from the bazel configuration
-file(STRINGS ${PROJECT_SOURCE_DIR}/tensorflow/workspace.bzl workspace_contents)
+file(STRINGS ${tf_tf_source_dir}/workspace.bzl workspace_contents)
 foreach(line ${workspace_contents})
     string(REGEX MATCH ".*\"(https://bitbucket.org/eigen/eigen/get/[^\"]*tar.gz)\"" has_url ${line})
     if(has_url)

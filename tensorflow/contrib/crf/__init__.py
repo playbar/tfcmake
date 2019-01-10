@@ -20,7 +20,6 @@ See the @{$python/contrib.crf} guide.
 @@crf_decode
 @@crf_log_likelihood
 @@crf_log_norm
-@@crf_multitag_sequence_score
 @@crf_sequence_score
 @@crf_unary_score
 @@CrfDecodeBackwardRnnCell
@@ -37,7 +36,6 @@ from tensorflow.contrib.crf.python.ops.crf import crf_binary_score
 from tensorflow.contrib.crf.python.ops.crf import crf_decode
 from tensorflow.contrib.crf.python.ops.crf import crf_log_likelihood
 from tensorflow.contrib.crf.python.ops.crf import crf_log_norm
-from tensorflow.contrib.crf.python.ops.crf import crf_multitag_sequence_score
 from tensorflow.contrib.crf.python.ops.crf import crf_sequence_score
 from tensorflow.contrib.crf.python.ops.crf import crf_unary_score
 from tensorflow.contrib.crf.python.ops.crf import CrfDecodeBackwardRnnCell

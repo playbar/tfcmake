@@ -54,14 +54,14 @@ class ParallelLoopEmitter : public llvm_ir::LoopEmitter {
   ParallelLoopEmitter(const llvm_ir::ElementGenerator& target_element_generator,
                       const llvm_ir::IrArray& target_array,
                       const DynamicLoopBounds* dynamic_loop_bounds,
-                      llvm::IRBuilder<>* b);
+                      llvm::IRBuilder<>* ir_builder);
 
   ParallelLoopEmitter(const ParallelLoopEmitter&) = delete;
   ParallelLoopEmitter& operator=(const ParallelLoopEmitter&) = delete;
   ~ParallelLoopEmitter() override = default;
 
   std::vector<llvm_ir::IrArray::Index> EmitIndexAndSetExitBasicBlock(
-      tensorflow::StringPiece loop_name, llvm::Type* index_type) override;
+      tensorflow::StringPiece loop_name) override;
 
  private:
   const DynamicLoopBounds* dynamic_loop_bounds_;

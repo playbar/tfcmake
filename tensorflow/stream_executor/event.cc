@@ -15,9 +15,9 @@ limitations under the License.
 
 #include "tensorflow/stream_executor/event.h"
 
-#include "tensorflow/stream_executor/stream.h"
 #include "tensorflow/stream_executor/stream_executor_internal.h"
 #include "tensorflow/stream_executor/stream_executor_pimpl.h"
+#include "tensorflow/stream_executor/stream.h"
 
 namespace stream_executor {
 
@@ -27,12 +27,9 @@ Event::Event(StreamExecutor* stream_exec)
           stream_exec_->implementation()->CreateEventImplementation()) {}
 
 Event::~Event() {
-  // Deal with nullptr implementation_, as this event may have been std::moved.
-  if (stream_exec_ && implementation_) {
-    auto status = stream_exec_->DeallocateEvent(this);
-    if (!status.ok()) {
-      LOG(ERROR) << status.error_message();
-    }
+  auto status = stream_exec_->DeallocateEvent(this);
+  if (!status.ok()) {
+    LOG(ERROR) << status.error_message();
   }
 }
 

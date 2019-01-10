@@ -23,11 +23,11 @@ limitations under the License.
 #include "tensorflow/compiler/xla/layout_util.h"
 #include "tensorflow/compiler/xla/legacy_flags/debug_options_flags.h"
 #include "tensorflow/compiler/xla/ptr_util.h"
-#include "tensorflow/compiler/xla/service/hlo_parser.h"
 #include "tensorflow/compiler/xla/service/platform_util.h"
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/tests/literal_test_util.h"
 #include "tensorflow/compiler/xla/tests/test_utils.h"
+#include "tensorflow/compiler/xla/tools/parser/hlo_parser.h"
 #include "tensorflow/compiler/xla/types.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/lib/gtl/array_slice.h"
@@ -94,7 +94,8 @@ HloTestBase::HloTestBase(se::Platform* test_platform,
 
 /* static */
 std::unique_ptr<HloModule> HloTestBase::CreateNewModule(const string& name) {
-  return MakeUnique<HloModule>(name, GetModuleConfigForTest());
+  return MakeUnique<HloModule>(name, VersionedComputationHandle(),
+                               GetModuleConfigForTest());
 }
 
 /*static*/ DebugOptions HloTestBase::GetDebugOptionsForTest() {
@@ -276,10 +277,9 @@ StatusOr<::testing::AssertionResult> HloTestBase::RunAndCompareInternal(
 
 HloComputation* HloTestBase::FindComputation(HloModule* module,
                                              tensorflow::StringPiece name) {
-  auto computations = module->computations();
-  auto it = c_find_if(computations,
+  auto it = c_find_if(module->computations(),
                       [&](HloComputation* c) { return c->name() == name; });
-  if (it == computations.end()) {
+  if (it == module->computations().end()) {
     return nullptr;
   }
   return *it;
@@ -288,10 +288,9 @@ HloComputation* HloTestBase::FindComputation(HloModule* module,
 HloInstruction* HloTestBase::FindInstruction(HloModule* module,
                                              tensorflow::StringPiece name) {
   for (const HloComputation* c : module->computations()) {
-    auto instructions = c->instructions();
-    auto it = c_find_if(instructions,
+    auto it = c_find_if(c->instructions(),
                         [&](HloInstruction* i) { return i->name() == name; });
-    if (it != instructions.end()) {
+    if (it != c->instructions().end()) {
       return *it;
     }
   }

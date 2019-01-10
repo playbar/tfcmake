@@ -87,13 +87,12 @@ class LayoutOptimizerTest : public GrapplerTest {
 
   Output SimpleConv2DBackpropInput(tensorflow::Scope* s, int input_size,
                                    int filter_size, const string& padding) {
-    return SimpleConv2DBackpropInput(s, input_size, filter_size, padding, true,
-                                     true);
+    return SimpleConv2DBackpropInput(s, input_size, filter_size, padding, true);
   }
 
   Output SimpleConv2DBackpropInput(tensorflow::Scope* s, int input_size,
                                    int filter_size, const string& padding,
-                                   bool const_input_size, bool dilated) {
+                                   bool const_input_size) {
     int batch_size = 128;
     int input_height = input_size;
     int input_width = input_size;
@@ -124,18 +123,14 @@ class LayoutOptimizerTest : public GrapplerTest {
     Output conv_backprop_input;
     Output input_sizes_i =
         ops::Identity(s->WithOpName("InputSizesIdentity"), input_sizes);
-    ops::Conv2DBackpropInput::Attrs attrs;
-    if (dilated) {
-      attrs = attrs.Dilations({1, 2, 2, 1});
-    }
     if (const_input_size) {
       conv_backprop_input = ops::Conv2DBackpropInput(
           s->WithOpName("Conv2DBackpropInput"), input_sizes, filter, output,
-          {1, stride, stride, 1}, padding, attrs);
+          {1, stride, stride, 1}, padding);
     } else {
       conv_backprop_input = ops::Conv2DBackpropInput(
           s->WithOpName("Conv2DBackpropInput"), input_sizes_i, filter, output,
-          {1, stride, stride, 1}, padding, attrs);
+          {1, stride, stride, 1}, padding);
     }
     return conv_backprop_input;
   }
@@ -221,7 +216,7 @@ TEST_F(LayoutOptimizerTest, Conv2DBackpropInput) {
 
 TEST_F(LayoutOptimizerTest, Conv2DBackpropInputNonConstInputSizes) {
   tensorflow::Scope s = tensorflow::Scope::NewRootScope();
-  auto conv = SimpleConv2DBackpropInput(&s, 7, 2, "SAME", false, false);
+  auto conv = SimpleConv2DBackpropInput(&s, 7, 2, "SAME", false);
   Output fetch = ops::Identity(s.WithOpName("Fetch"), {conv});
   GrapplerItem item;
   TF_CHECK_OK(s.ToGraphDef(&item.graph));

@@ -23,9 +23,8 @@ from tensorflow.python.eager import test
 from tensorflow.python.framework import test_util
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import resource_variable_ops
-from tensorflow.python.training.checkpointable import base
-from tensorflow.python.training.checkpointable import tracking
-from tensorflow.python.training.checkpointable import util
+from tensorflow.python.training.checkpointable import base as checkpointable
+from tensorflow.python.training.checkpointable import util as checkpointable_utils
 
 
 def _split_variable_closure(variable):
@@ -44,7 +43,7 @@ def _combine_variable_closure(variable):
   return _consume_restore_buffer_fn
 
 
-class SaveTensorSlicesAsDeps(base.CheckpointableBase):
+class SaveTensorSlicesAsDeps(checkpointable.CheckpointableBase):
 
   def __init__(self):
     self.combined = resource_variable_ops.ResourceVariable([0., 0., 0., 0.])
@@ -59,14 +58,14 @@ class SaveTensorSlicesAsDeps(base.CheckpointableBase):
       self._track_checkpointable(dep, name=name)
 
 
-class HasRegularDeps(tracking.Checkpointable):
+class HasRegularDeps(checkpointable.Checkpointable):
 
   def __init__(self):
     self.first_half = resource_variable_ops.ResourceVariable([0., 0.])
     self.second_half = resource_variable_ops.ResourceVariable([0., 0.])
 
 
-class OnlyOneDep(tracking.Checkpointable):
+class OnlyOneDep(checkpointable.Checkpointable):
 
   def __init__(self):
     self.first_half = resource_variable_ops.ResourceVariable([0., 0.])
@@ -74,9 +73,9 @@ class OnlyOneDep(tracking.Checkpointable):
 
 class SplitTests(test.TestCase):
 
-  @test_util.run_in_graph_and_eager_modes
+  @test_util.run_in_graph_and_eager_modes()
   def testSaveRestoreSplitDep(self):
-    save_checkpoint = util.Checkpoint(
+    save_checkpoint = checkpointable_utils.Checkpoint(
         dep=SaveTensorSlicesAsDeps())
     self.evaluate(save_checkpoint.dep.combined.assign([1., 2., 3., 4.]))
     checkpoint_directory = self.get_temp_dir()
@@ -84,7 +83,7 @@ class SplitTests(test.TestCase):
     save_path = save_checkpoint.save(checkpoint_prefix)
 
     regular_deps = HasRegularDeps()
-    regular_restore_checkpoint = util.Checkpoint(
+    regular_restore_checkpoint = checkpointable_utils.Checkpoint(
         dep=regular_deps)
     regular_restore_checkpoint.restore(
         save_path).assert_consumed().run_restore_ops()
@@ -92,7 +91,7 @@ class SplitTests(test.TestCase):
     self.assertAllEqual([3., 4.], self.evaluate(regular_deps.second_half))
 
     one_dep = OnlyOneDep()
-    one_dep_restore_checkpoint = util.Checkpoint(dep=one_dep)
+    one_dep_restore_checkpoint = checkpointable_utils.Checkpoint(dep=one_dep)
     status = one_dep_restore_checkpoint.restore(save_path)
     with self.assertRaises(AssertionError):
       # Missing the second dependency.
@@ -100,7 +99,7 @@ class SplitTests(test.TestCase):
     status.run_restore_ops()
     self.assertAllEqual([1., 2.], self.evaluate(one_dep.first_half))
 
-    restore_checkpoint = util.Checkpoint()
+    restore_checkpoint = checkpointable_utils.Checkpoint()
     status = restore_checkpoint.restore(save_path)
     restore_checkpoint.dep = SaveTensorSlicesAsDeps()
     status.assert_consumed().run_restore_ops()

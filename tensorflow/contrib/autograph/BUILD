@@ -23,9 +23,9 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         "//tensorflow/contrib/autograph/impl",
-        "//tensorflow/contrib/autograph/lang",
         "//tensorflow/contrib/autograph/pyct",
         "//tensorflow/contrib/autograph/utils",
-        "//tensorflow/python:util",
+        "@gast_archive//:gast",
+        "@six_archive//:six",
     ],
 )

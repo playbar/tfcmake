@@ -36,7 +36,6 @@ from tensorflow.python.ops import linalg_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import random_ops
 from tensorflow.python.ops.distributions import distribution
-from tensorflow.python.util import deprecation
 
 __all__ = [
     "WishartCholesky",
@@ -74,14 +73,6 @@ class _WishartLinearOperator(distribution.Distribution):
   this class.
   """
 
-  @deprecation.deprecated(
-      "2018-10-01",
-      "The TensorFlow Distributions library has moved to "
-      "TensorFlow Probability "
-      "(https://github.com/tensorflow/probability). You "
-      "should update all references to use `tfp.distributions` "
-      "instead of `tf.contrib.distributions`.",
-      warn_once=True)
   def __init__(self,
                df,
                scale_operator,
@@ -510,14 +501,6 @@ class WishartCholesky(_WishartLinearOperator):
 
   """
 
-  @deprecation.deprecated(
-      "2018-10-01",
-      "The TensorFlow Distributions library has moved to "
-      "TensorFlow Probability "
-      "(https://github.com/tensorflow/probability). You "
-      "should update all references to use `tfp.distributions` "
-      "instead of `tf.contrib.distributions`.",
-      warn_once=True)
   def __init__(self,
                df,
                scale,
@@ -634,14 +617,6 @@ class WishartFull(_WishartLinearOperator):
 
   """
 
-  @deprecation.deprecated(
-      "2018-10-01",
-      "The TensorFlow Distributions library has moved to "
-      "TensorFlow Probability "
-      "(https://github.com/tensorflow/probability). You "
-      "should update all references to use `tfp.distributions` "
-      "instead of `tf.contrib.distributions`.",
-      warn_once=True)
   def __init__(self,
                df,
                scale,

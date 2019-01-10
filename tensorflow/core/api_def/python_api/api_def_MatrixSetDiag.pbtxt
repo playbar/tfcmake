@@ -5,6 +5,5 @@ op {
   }
   endpoint {
     name: "matrix_set_diag"
-    deprecated: true
   }
 }

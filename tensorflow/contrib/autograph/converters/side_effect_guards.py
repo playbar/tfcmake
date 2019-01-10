@@ -36,11 +36,11 @@ from __future__ import print_function
 
 import gast
 
-from tensorflow.contrib.autograph.core import converter
 from tensorflow.contrib.autograph.pyct import anno
 from tensorflow.contrib.autograph.pyct import ast_util
 from tensorflow.contrib.autograph.pyct import qual_names
 from tensorflow.contrib.autograph.pyct import templates
+from tensorflow.contrib.autograph.pyct import transformer
 from tensorflow.contrib.autograph.pyct.static_analysis.annos import NodeAnno
 
 
@@ -59,8 +59,13 @@ class SymbolNamer(object):
     raise NotImplementedError()
 
 
-class SideEffectGuardTransformer(converter.Base):
+class SideEffectGuardTransformer(transformer.Base):
   """Adds control dependencies to functions with side effects."""
+
+  def __init__(self, context):
+    super(SideEffectGuardTransformer, self).__init__(context)
+
+  # pylint:disable=invalid-name
 
   def _visit_and_reindent(self, nodes):
     new_nodes = []
@@ -144,7 +149,7 @@ class SideEffectGuardTransformer(converter.Base):
             s for s in guarded_args if s not in args_scope.parent.modified)
         aliased_new_names = tuple(
             qual_names.QN(
-                self.ctx.namer.new_symbol(
+                self.context.namer.new_symbol(
                     s.ssf(), args_scope.parent.referenced)) for s in need_alias)
         alias_map = dict(zip(need_alias, aliased_new_names))
         if len(guarded_args) == 1:
@@ -178,6 +183,8 @@ class SideEffectGuardTransformer(converter.Base):
                    (node.body, alias_map))
     return node
 
+  # pylint:enable=invalid-name
 
-def transform(node, ctx):
-  return SideEffectGuardTransformer(ctx).visit(node)
+
+def transform(node, context):
+  return SideEffectGuardTransformer(context).visit(node)

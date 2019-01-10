@@ -34,13 +34,7 @@ namespace tflite {
 TfLiteStatus SimpleMemoryArena::Allocate(TfLiteContext* context,
                                          size_t alignment, size_t size,
                                          ArenaAlloc* new_alloc) {
-  TF_LITE_ENSURE(context, alignment <= arena_alignment_);
-
-  if (size == 0) {
-    new_alloc->offset = 0;
-    new_alloc->size = 0;
-    return kTfLiteOk;
-  }
+  TF_LITE_ENSURE(context, alignment < arena_alignment_);
 
   size_t current_top = 0;
 
@@ -81,10 +75,6 @@ TfLiteStatus SimpleMemoryArena::Allocate(TfLiteContext* context,
 
 TfLiteStatus SimpleMemoryArena::Deallocate(TfLiteContext* context,
                                            const ArenaAlloc& alloc) {
-  if (alloc.size == 0) {
-    return kTfLiteOk;
-  }
-
   int erased_allocs_count = 0;
   auto it = allocs_.begin();
   while (it != allocs_.end()) {
@@ -132,11 +122,7 @@ TfLiteStatus SimpleMemoryArena::ResolveAlloc(TfLiteContext* context,
                                              char** output_ptr) {
   TF_LITE_ENSURE(context, committed_);
   TF_LITE_ENSURE(context, output_ptr != nullptr);
-  if (alloc.size == 0) {
-    *output_ptr = nullptr;
-  } else {
-    *output_ptr = underlying_buffer_aligned_ptr_ + alloc.offset;
-  }
+  *output_ptr = underlying_buffer_aligned_ptr_ + alloc.offset;
   return kTfLiteOk;
 }
 

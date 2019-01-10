@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "tensorflow/compiler/xla/service/zero_sized_hlo_elimination.h"
 
-#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/shape_util.h"
@@ -32,12 +32,11 @@ StatusOr<bool> ZeroSizedHloElimination::Run(HloModule* module) {
   for (HloComputation* comp : module->MakeNonfusionComputations()) {
     for (HloInstruction* instruction : comp->MakeInstructionPostOrder()) {
       if (instruction->HasSideEffect() ||
-          !ShapeUtil::IsArray(instruction->shape()) ||
-          instruction->opcode() == HloOpcode::kConstant) {
+          ShapeUtil::IsTuple(instruction->shape())) {
         continue;
       }
       if (comp->IsRemovable(instruction) &&
-          ShapeUtil::IsZeroElementArray(instruction->shape())) {
+          ShapeUtil::HasZeroElements(instruction->shape())) {
         TF_RETURN_IF_ERROR(comp->ReplaceWithNewInstruction(
             instruction, HloInstruction::CreateConstant(
                              Literal::CreateFromShape(instruction->shape()))));

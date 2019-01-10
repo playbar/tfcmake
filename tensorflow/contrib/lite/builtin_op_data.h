@@ -92,17 +92,8 @@ typedef struct {
   TfLiteFusedActivation activation;
 } TfLiteSequenceRNNParams;
 
-typedef enum {
-  kTfLiteFullyConnectedWeightsFormatDefault = 0,
-  kTfLiteFullyConnectedWeightsFormatShuffled4x16Int8 = 1,
-} TfLiteFullyConnectedWeightsFormat;
-
 typedef struct {
-  // Parameters for FullyConnected version 1 or above.
   TfLiteFusedActivation activation;
-
-  // Parameters for FullyConnected version 2 or above.
-  TfLiteFullyConnectedWeightsFormat weights_format;
 } TfLiteFullyConnectedParams;
 
 typedef enum {
@@ -157,20 +148,10 @@ typedef struct {
   float beta;
 } TfLiteLocalResponseNormParams;
 
-typedef enum {
-  kTfLiteLSTMFullKernel = 0,
-  kTfLiteLSTMBasicKernel
-} TfLiteLSTMKernelType;
-
 typedef struct {
-  // Parameters for LSTM version 1.
   TfLiteFusedActivation activation;
   float cell_clip;
   float proj_clip;
-
-  // Parameters for LSTM version 2.
-  // kTfLiteLSTMBasicKernel is only supported in version 2 or above.
-  TfLiteLSTMKernelType kernel_type;
 } TfLiteLSTMParams;
 
 typedef struct {
@@ -224,7 +205,7 @@ typedef struct {
 
 typedef struct {
   bool keep_dims;
-} TfLiteReducerParams;
+} TfLiteMeanParams;
 
 typedef struct {
   int num_splits;
@@ -250,10 +231,6 @@ typedef struct {
 } TfLiteArgMaxParams;
 
 typedef struct {
-  TfLiteType output_type;
-} TfLiteArgMinParams;
-
-typedef struct {
   TfLitePadding padding;
   int stride_width;
   int stride_height;
@@ -262,25 +239,6 @@ typedef struct {
 typedef struct {
   bool validate_indices;
 } TfLiteSparseToDenseParams;
-
-typedef struct {
-  TfLiteType out_type;
-} TfLiteShapeParams;
-
-typedef struct {
-  // Parameters supported by version 1:
-  float min;
-  float max;
-  int num_bits;
-
-  // Parameters supported by version 2:
-  bool narrow_range;
-} TfLiteFakeQuantParams;
-
-typedef struct {
-  int values_count;
-  int axis;
-} TfLitePackParams;
 
 #ifdef __cplusplus
 }  // extern "C"

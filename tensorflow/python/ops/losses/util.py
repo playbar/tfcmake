@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tensorflow.python.eager import context
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
@@ -33,10 +32,7 @@ def add_loss(loss, loss_collection=ops.GraphKeys.LOSSES):
     loss: A loss `Tensor`.
     loss_collection: Optional collection to add the loss to.
   """
-  # Since we have no way of figuring out when a training iteration starts or
-  # ends, holding on to a loss when executing eagerly is indistingishable from
-  # leaking memory. We instead leave the collection empty.
-  if loss_collection and not context.executing_eagerly():
+  if loss_collection:
     ops.add_to_collection(loss_collection, loss)
 
 

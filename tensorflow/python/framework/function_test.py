@@ -537,25 +537,19 @@ class FunctionTest(test.TestCase):
   def testResourceVarAsImplicitInput(self):
     g = ops.Graph()
     with g.as_default(), ops.device("cpu:0"):
-      expected_type = dtypes.float32
-      expected_shape = tensor_shape.TensorShape((4, 4))
       v = variable_scope.get_variable(
-          "var", expected_shape, expected_type, use_resource=True)
+          "var", (4, 4), dtypes.float32, use_resource=True)
 
       @function.Defun()
       def Foo():
-        captured = array_ops.identity(v)
-        self.assertEqual(expected_type, captured.dtype)
-        self.assertEqual(expected_shape, captured.shape)
-        return captured, array_ops.shape(captured)
+        return array_ops.identity(v)
 
-      expected_val = v.value()
-      actual_val, actual_shape = Foo()
+      y = v.value()
+      z = Foo()
 
     with self.test_session(graph=g):
       v.initializer.run()
-      self.assertAllEqual(expected_val.eval(), actual_val.eval())
-      self.assertAllEqual(expected_shape, actual_shape.eval())
+      self.assertAllEqual(y.eval(), z.eval())
 
   def testDefineErrors(self):
     with ops.Graph().as_default():

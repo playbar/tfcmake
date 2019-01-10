@@ -31,23 +31,16 @@ namespace xla {
 
 ChannelTracker::ChannelTracker() : next_channel_(1) {}
 
-StatusOr<ChannelHandle> ChannelTracker::NewChannel(
-    ChannelHandle::ChannelType type) {
-  if (type != ChannelHandle::DEVICE_TO_DEVICE &&
-      type != ChannelHandle::HOST_TO_DEVICE &&
-      type != ChannelHandle::DEVICE_TO_HOST) {
-    return InvalidArgument("Invalid channel type: %d", type);
-  }
+ChannelHandle ChannelTracker::NewChannel() {
   tensorflow::mutex_lock lock(channel_mutex_);
 
   // Create a new channel handle with a unique value.
-  ChannelHandle new_handle = AllocateHandle(type);
+  const ChannelHandle new_handle = AllocateHandle();
 
   // Register a channel object associated with the handle.
   Channel channel;
   channel.has_sender = false;
   channel.receiver_count = 0;
-  channel.type = type;
   opaque_to_channel_[new_handle.handle()] = channel;
 
   return new_handle;
@@ -63,11 +56,10 @@ Status ChannelTracker::RegisterRecv(const ChannelHandle& handle) {
   return RegisterRecvInternal(handle);
 }
 
-ChannelHandle ChannelTracker::AllocateHandle(ChannelHandle::ChannelType type) {
+ChannelHandle ChannelTracker::AllocateHandle() {
   int64 handle_value = next_channel_++;
   ChannelHandle result;
   result.set_handle(handle_value);
-  result.set_type(type);
   return result;
 }
 
@@ -76,13 +68,6 @@ Status ChannelTracker::RegisterSendInternal(const ChannelHandle& handle) {
     return NotFound("channel handle not found: %lld", handle.handle());
   }
   Channel& channel = opaque_to_channel_[handle.handle()];
-  if (channel.type == ChannelHandle::HOST_TO_DEVICE) {
-    return FailedPrecondition(
-        "host-to-device channels cannot be used with a Send operation; "
-        "channel handle: %lld",
-        handle.handle());
-  }
-
   if (channel.has_sender) {
     return FailedPrecondition(
         "when registering send, passed a channel handle that is already used "
@@ -98,13 +83,6 @@ Status ChannelTracker::RegisterRecvInternal(const ChannelHandle& handle) {
     return NotFound("channel handle not found: %lld", handle.handle());
   }
   Channel& channel = opaque_to_channel_[handle.handle()];
-  if (channel.type == ChannelHandle::DEVICE_TO_HOST) {
-    return FailedPrecondition(
-        "device-to-host channels cannot be used with a Recv operation; "
-        "channel handle: %lld",
-        handle.handle());
-  }
-
   // TODO(b/33942691): Allow more than 1 receivers for broadcast.
   if (channel.receiver_count >= 1) {
     return FailedPrecondition(

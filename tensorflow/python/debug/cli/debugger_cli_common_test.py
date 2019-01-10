@@ -21,9 +21,6 @@ import os
 import stat
 import tempfile
 
-import numpy as np
-
-from tensorflow.python import pywrap_tensorflow_internal
 from tensorflow.python.debug.cli import debugger_cli_common
 from tensorflow.python.framework import test_util
 from tensorflow.python.platform import gfile
@@ -550,10 +547,7 @@ class CommandHandlerRegistryTest(test_util.TensorFlowTestCase):
                       "  Show screen width in number of columns.", "", "",
                       "help", "  Aliases: h", "", "  Print this help message.",
                       "", "", "noop", "  Aliases: n, NOOP", "",
-                      "  No operation.", "  I.e., do nothing.", "", "",
-                      "version", "  Aliases: ver", "",
-                      "  Print the versions of TensorFlow and its key "
-                      "dependencies.", "", ""],
+                      "  No operation.", "  I.e., do nothing.", "", ""],
                      output.lines)
 
     # Get help for one specific command prefix.
@@ -581,9 +575,7 @@ class CommandHandlerRegistryTest(test_util.TensorFlowTestCase):
     self.assertEqual(help_intro.lines + [
         "help", "  Aliases: h", "", "  Print this help message.", "", "",
         "noop", "  Aliases: n, NOOP", "", "  No operation.",
-        "  I.e., do nothing.", "", "",
-        "version", "  Aliases: ver", "",
-        "  Print the versions of TensorFlow and its key dependencies.", "", ""
+        "  I.e., do nothing.", "", ""
     ], output.lines)
 
 
@@ -1153,23 +1145,6 @@ class MenuTest(test_util.TensorFlowTestCase):
     self.assertEqual((6, 18, [self.node1]), output.font_attr_segs[0][0])
     self.assertEqual((20, 38, [self.node2]), output.font_attr_segs[0][1])
     self.assertEqual((40, 50, ["bold"]), output.font_attr_segs[0][2])
-
-
-class GetTensorFlowVersionLinesTest(test_util.TensorFlowTestCase):
-
-  def testGetVersionWithoutDependencies(self):
-    out = debugger_cli_common.get_tensorflow_version_lines()
-    self.assertEqual(2, len(out.lines))
-    self.assertEqual(
-        "TensorFlow version: %s" % pywrap_tensorflow_internal.__version__,
-        out.lines[0])
-
-  def testGetVersionWithDependencies(self):
-    out = debugger_cli_common.get_tensorflow_version_lines(True)
-    self.assertIn(
-        "TensorFlow version: %s" % pywrap_tensorflow_internal.__version__,
-        out.lines)
-    self.assertIn("  numpy: %s" % np.__version__, out.lines)
 
 
 if __name__ == "__main__":

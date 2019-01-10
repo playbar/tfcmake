@@ -25,6 +25,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import tensorflow.contrib.eager as tfe
 
 
 class GenericNet(tf.keras.Model):
@@ -46,16 +47,18 @@ class GenericNet(tf.keras.Model):
 
     # Scale
     self.scale_layer = _custom_dense(x_dim, .001)
-    self.coeff_scale = tf.Variable(
+    self.coeff_scale = tfe.Variable(
         initial_value=tf.zeros([1, x_dim]), name='coeff_scale', trainable=True)
     # Translation
     self.translation_layer = _custom_dense(x_dim, factor=.001)
     # Transformation
     self.transformation_layer = _custom_dense(x_dim, .001)
-    self.coeff_transformation = tf.Variable(
+    self.coeff_transformation = tfe.Variable(
         initial_value=tf.zeros([1, x_dim]),
         name='coeff_transformation',
         trainable=True)
+    # TODO(lxuechen): Remove this after model.add_weight is in place
+    self.vars_not_in_layers = [self.coeff_scale, self.coeff_transformation]
 
   def call(self, inputs):
     v, x, t = inputs

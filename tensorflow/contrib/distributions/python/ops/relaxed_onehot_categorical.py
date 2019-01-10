@@ -31,7 +31,6 @@ from tensorflow.python.ops import random_ops
 from tensorflow.python.ops.distributions import distribution
 from tensorflow.python.ops.distributions import transformed_distribution
 from tensorflow.python.ops.distributions import util as distribution_util
-from tensorflow.python.util import deprecation
 
 
 class ExpRelaxedOneHotCategorical(distribution.Distribution):
@@ -126,14 +125,6 @@ class ExpRelaxedOneHotCategorical(distribution.Distribution):
   A Continuous Relaxation of Discrete Random Variables. 2016.
   """
 
-  @deprecation.deprecated(
-      "2018-10-01",
-      "The TensorFlow Distributions library has moved to "
-      "TensorFlow Probability "
-      "(https://github.com/tensorflow/probability). You "
-      "should update all references to use `tfp.distributions` "
-      "instead of `tf.contrib.distributions`.",
-      warn_once=True)
   def __init__(
       self,
       temperature,
@@ -299,7 +290,7 @@ class ExpRelaxedOneHotCategorical(distribution.Distribution):
       return x
     return control_flow_ops.with_dependencies([
         check_ops.assert_non_positive(x),
-        check_ops.assert_near(
+        distribution_util.assert_close(
             array_ops.zeros([], dtype=self.dtype),
             math_ops.reduce_logsumexp(x, axis=[-1])),
     ], x)
@@ -377,14 +368,6 @@ class RelaxedOneHotCategorical(
   A Continuous Relaxation of Discrete Random Variables. 2016.
   """
 
-  @deprecation.deprecated(
-      "2018-10-01",
-      "The TensorFlow Distributions library has moved to "
-      "TensorFlow Probability "
-      "(https://github.com/tensorflow/probability). You "
-      "should update all references to use `tfp.distributions` "
-      "instead of `tf.contrib.distributions`.",
-      warn_once=True)
   def __init__(
       self,
       temperature,

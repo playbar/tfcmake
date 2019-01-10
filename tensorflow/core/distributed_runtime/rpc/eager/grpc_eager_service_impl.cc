@@ -18,8 +18,10 @@ limitations under the License.
 #include "tensorflow/core/distributed_runtime/rpc/eager/grpc_eager_service.h"
 #include "tensorflow/core/distributed_runtime/rpc/grpc_call.h"
 #include "tensorflow/core/distributed_runtime/rpc/grpc_channel.h"
+#include "tensorflow/core/distributed_runtime/rpc/grpc_server_lib.h"
 #include "tensorflow/core/distributed_runtime/rpc/grpc_util.h"
 #include "tensorflow/core/distributed_runtime/rpc/grpc_worker_cache.h"
+#include "tensorflow/core/distributed_runtime/rpc/grpc_worker_service.h"
 #include "tensorflow/core/util/ptr_util.h"
 
 namespace tensorflow {
@@ -27,12 +29,14 @@ namespace eager {
 
 GrpcEagerServiceImpl::GrpcEagerServiceImpl(
     const WorkerEnv* env, ::grpc::ServerBuilder* server_builder)
-    : env_(env), local_impl_(env) {
+    : local_impl_(env) {
+  request_handler_threadpool_ =
+      MakeUnique<thread::ThreadPool>(env->env, "EagerServiceRequestHandler", 4);
   server_builder->RegisterService(&service_);
   cq_ = server_builder->AddCompletionQueue();
 }
 
-void GrpcEagerServiceImpl::HandleRPCsLoop() {
+void GrpcEagerServiceImpl::DriveCQ() {
 #define ENQUEUE_REQUEST(method)                                                \
   do {                                                                         \
     Call<GrpcEagerServiceImpl,                                                 \
@@ -48,7 +52,6 @@ void GrpcEagerServiceImpl::HandleRPCsLoop() {
   ENQUEUE_REQUEST(KeepAlive);
   ENQUEUE_REQUEST(CloseContext);
   ENQUEUE_REQUEST(RegisterFunction);
-  ENQUEUE_REQUEST(SendTensor);
 #undef ENQUEUE_REQUEST
 
   void* tag;  // Matches the operation started against this cq_.
@@ -71,7 +74,12 @@ void GrpcEagerServiceImpl::HandleRPCsLoop() {
   }
 }
 
-void GrpcEagerServiceImpl::Shutdown() {
+void GrpcEagerServiceImpl::Start() {
+  // TODO(nareshmodi) separate thread for driving CQ
+  request_handler_threadpool_->Schedule([this]() { DriveCQ(); });
+}
+
+void GrpcEagerServiceImpl::Stop() {
   // This enqueues a special event (with a null tag)
   // that causes the completion queue to be shut down on the
   // polling thread.

@@ -47,7 +47,6 @@ cc_test(
     name = "extract_feature_op_test",
     size = "small",
     srcs = ["ops/extract_feature_test.cc"],
-    tags = ["no_oss"],
     deps = [
         ":custom_ops",
         "//tensorflow/contrib/lite:framework",
@@ -62,7 +61,6 @@ cc_test(
     name = "normalize_op_test",
     size = "small",
     srcs = ["ops/normalize_test.cc"],
-    tags = ["no_oss"],
     deps = [
         ":custom_ops",
         "//tensorflow/contrib/lite:framework",
@@ -77,7 +75,6 @@ cc_test(
     name = "predict_op_test",
     size = "small",
     srcs = ["ops/predict_test.cc"],
-    tags = ["no_oss"],
     deps = [
         ":custom_ops",
         "//tensorflow/contrib/lite:framework",

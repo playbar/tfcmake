@@ -18,7 +18,7 @@ limitations under the License.
 // Initiates a TPU profiling on the TPUProfiler service at service_addr,
 // receives and dumps the profile data to a tensorboard log directory.
 
-#include "grpcpp/grpcpp.h"
+#include "grpc++/grpc++.h"
 
 #include <cstdio>
 #include <ctime>

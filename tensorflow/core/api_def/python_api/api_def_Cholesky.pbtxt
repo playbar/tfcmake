@@ -1,10 +1,9 @@
 op {
   graph_op_name: "Cholesky"
   endpoint {
-    name: "linalg.cholesky"
+    name: "cholesky"
   }
   endpoint {
-    name: "cholesky"
-    deprecated: true
+    name: "linalg.cholesky"
   }
 }

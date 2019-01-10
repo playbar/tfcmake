@@ -18,7 +18,6 @@ limitations under the License.
 #include <gtest/gtest.h>
 #include "tensorflow/contrib/lite/toco/model.h"
 #include "tensorflow/contrib/lite/toco/tooling_util.h"
-#include "tensorflow/core/lib/core/status.h"
 
 namespace toco {
 
@@ -39,8 +38,6 @@ std::vector<ShapePair> CreateShapePairs() {
        {Shape({256, 256, 3}), Shape({256, 256, 3}), Agreement::kBroadcast},
        {Shape({256, 256, 3}), Shape({3}), Agreement::kBroadcast},
        {Shape({8, 1, 6, 1}), Shape({7, 1, 5}), Agreement::kBroadcast},
-       {Shape({}), Shape({3}), Agreement::kBroadcast},
-       {Shape({}), Shape({3, 1}), Agreement::kBroadcast},
 
        // These extend (and therefore broadcast).
        {Shape({3}), Shape({3}), Agreement::kExtend},
@@ -56,7 +53,6 @@ std::vector<ShapePair> CreateShapePairs() {
        {Shape({15, 3, 5}), Shape({15, 1, 5}), Agreement::kBroadcastNotExtend},
        {Shape({15, 3, 5}), Shape({3, 5}), Agreement::kBroadcastNotExtend},
        {Shape({15, 3, 5}), Shape({3, 1}), Agreement::kBroadcastNotExtend},
-       {Shape({3, 1}), Shape({}), Agreement::kBroadcastNotExtend},
 
        // These do not broadcast (and therefore also do not extend).
        {Shape({3}), Shape({4}), Agreement::kNeither},
@@ -103,7 +99,7 @@ static const char kLargeTensorMessage[] = "Tensor shape is too large";
 
 TEST(NumElementsTest, Int) {
   int count;
-  tensorflow::Status status = tensorflow::Status::OK();
+  port::Status status = port::Status::OK();
 
   status = NumElements(std::vector<int>{1024, 1024, 2047}, &count);
   EXPECT_TRUE(status.ok());
@@ -118,7 +114,7 @@ TEST(NumElementsTest, Int) {
 
 TEST(NumElementsTest, Int32) {
   int32_t count;
-  tensorflow::Status status = tensorflow::Status::OK();
+  port::Status status = port::Status::OK();
 
   status = NumElements(std::vector<int32_t>{1024, 1024, 2047}, &count);
   EXPECT_TRUE(status.ok());
@@ -133,7 +129,7 @@ TEST(NumElementsTest, Int32) {
 
 TEST(NumElementsTest, Int64) {
   int64_t count;
-  tensorflow::Status status = tensorflow::Status::OK();
+  port::Status status = port::Status::OK();
 
   status = NumElements(std::vector<int64_t>{16777216, 16777216, 32767}, &count);
   EXPECT_TRUE(status.ok());
@@ -148,7 +144,7 @@ TEST(NumElementsTest, Int64) {
 
 TEST(NumElementsTest, UnsignedInt32) {
   uint32_t count;
-  tensorflow::Status status = tensorflow::Status::OK();
+  port::Status status = port::Status::OK();
 
   status = NumElements(std::vector<uint32_t>{1024, 2048, 2047}, &count);
   EXPECT_TRUE(status.ok());
@@ -163,7 +159,7 @@ TEST(NumElementsTest, UnsignedInt32) {
 
 TEST(NumElementsTest, UnsignedInt64) {
   uint64_t count;
-  tensorflow::Status status = tensorflow::Status::OK();
+  port::Status status = port::Status::OK();
 
   status =
       NumElements(std::vector<uint64_t>{16777216, 16777216, 65535}, &count);
@@ -176,26 +172,6 @@ TEST(NumElementsTest, UnsignedInt64) {
   status =
       NumElements(std::vector<uint64_t>{16777216, 16777216, 65536}, &count);
   EXPECT_EQ(status.error_message(), kLargeTensorMessage);
-}
-
-TEST(NumElementsTest, Scalar) {
-  tensorflow::Status status = tensorflow::Status::OK();
-
-  int32_t count;
-  status = NumElements(std::vector<int32_t>{}, &count);
-  EXPECT_TRUE(status.ok());
-  EXPECT_EQ(count, 1);
-
-  uint64_t countu64;
-  status = NumElements(std::vector<uint64_t>{}, &countu64);
-  EXPECT_TRUE(status.ok());
-  EXPECT_EQ(countu64, 1ULL);
-}
-
-TEST(FusedActivationTest, DefaultsToUnfused) {
-  EXPECT_TRUE(OperatorSupportsFusedActivation(OperatorType::kAdd));
-  EXPECT_FALSE(OperatorSupportsFusedActivation(OperatorType::kNone));
-  EXPECT_FALSE(OperatorSupportsFusedActivation(static_cast<OperatorType>(255)));
 }
 
 }  // namespace toco

@@ -1,4 +1,4 @@
-# Install TensorFlow for C
+# Installing TensorFlow for C
 
 TensorFlow provides a C API defined in
 [`c_api.h`](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/c/c_api.h),

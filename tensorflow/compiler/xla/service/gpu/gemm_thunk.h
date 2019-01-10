@@ -19,7 +19,6 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/buffer_assignment.h"
 #include "tensorflow/compiler/xla/service/gpu/buffer_allocations.h"
 #include "tensorflow/compiler/xla/service/gpu/gpu_executable.h"
-#include "tensorflow/compiler/xla/service/gpu/hlo_execution_profiler.h"
 #include "tensorflow/compiler/xla/service/gpu/thunk.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
@@ -49,8 +48,7 @@ class GemmThunk : public Thunk {
 
   // Does the gemm operation for the thunk on "stream", which must be non-null.
   Status ExecuteOnStream(const BufferAllocations& buffer_allocations,
-                         se::Stream* stream,
-                         HloExecutionProfiler* profiler) override;
+                         se::Stream* stream) override;
 
   // Returns true if we'll perform autotuning if run on the given stream.  If
   // so, we want the GPU to be quiescent during autotuning, so as not to

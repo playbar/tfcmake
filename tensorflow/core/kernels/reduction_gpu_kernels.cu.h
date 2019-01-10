@@ -295,11 +295,7 @@ __global__ void ColumnReduceMax16ColumnsKernel(
 
   // 1D array necessary due to bug in CUDA 9 compiler.
   // TODO(nluehr) revert to 2D array when compiler is ready.
-  // This is to mimic the following, but without any constructors:
-  //   __shared__ storage_type<value_type> partial_sums[32 * 33];
-  __shared__ __align__(
-      alignof(value_type)) char partial_sums_raw[32 * 33 * sizeof(value_type)];
-  value_type* partial_sums = reinterpret_cast<value_type*>(partial_sums_raw);
+  __shared__ storage_type<value_type> partial_sums[32 * 33];
 
   row += rows_per_warp * gridDim.y * blockDim.y;
   for (; row < num_rows; row += rows_per_warp * gridDim.y * blockDim.y) {
@@ -348,11 +344,7 @@ __global__ void ColumnReduceKernel(
 
   // 1D array necessary due to bug in CUDA 9 compiler.
   // TODO(nluehr) revert to 2D array when compiler is ready.
-  // This is to mimic the following, but without constructors:
-  //     __shared__ storage_type<value_type> partial_sums[32 * 33];
-  __shared__ __align__(
-      alignof(value_type)) char partial_sums_raw[32 * 33 * sizeof(value_type)];
-  value_type* partial_sums = reinterpret_cast<value_type*>(partial_sums_raw);
+  __shared__ storage_type<value_type> partial_sums[32 * 33];
 
   row += gridDim.y * blockDim.y;
 

@@ -85,8 +85,15 @@ bool AddDequantizeOperatorToInput(const string& input_name, const Operator* op,
   dequantized_input_minmax = input_minmax;
   auto& input_qparams = input_array.GetOrCreateQuantizationParams();
   input_array.data_type = input_array.final_data_type;
-  ChooseQuantizationParamsForArrayAndQuantizedDataType(
-      input_array, input_array.data_type, &input_qparams);
+  if (input_array.data_type == ArrayDataType::kUint8) {
+    GetQuantizationParamsFromMinMax<ArrayDataType::kUint8>(input_minmax,
+                                                           &input_qparams);
+  } else if (input_array.data_type == ArrayDataType::kInt16) {
+    GetQuantizationParamsFromMinMax<ArrayDataType::kInt16>(input_minmax,
+                                                           &input_qparams);
+  } else {
+    LOG(FATAL) << "unhandled data type";
+  }
 
   transformation->AddMessageF(
       "Created %s"

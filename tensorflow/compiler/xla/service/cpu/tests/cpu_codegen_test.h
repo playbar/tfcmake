@@ -22,7 +22,7 @@ namespace xla {
 namespace cpu {
 
 // Tests that verify IR emitted by the CPU backend is as expected.
-class CpuCodegenTest : public LlvmIrGenTestBase {};
+class CpuCodegenTest : public LLVMIRGenTestBase {};
 
 }  // namespace cpu
 }  // namespace xla

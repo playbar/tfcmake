@@ -8,7 +8,12 @@ load("//tensorflow:tensorflow.bzl", "tf_gen_op_wrapper_py")
 
 cc_library(
     name = "xla_ops",
-    srcs = ["xla_ops.cc"],
+    srcs = [
+        "dynamic_slice_ops.cc",
+        "functional_ops.cc",
+        "reduce_window_op.cc",
+        "sendrecv_ops.cc",
+    ],
     deps = [
         "//tensorflow/core:framework",
     ],

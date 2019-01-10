@@ -35,24 +35,19 @@ std::vector<std::unique_ptr<Operator>>::iterator FindOperator(
   return it;
 }
 
-bool ValidateSourceOp(const Model& model, const string& array_name,
-                      OperatorType op_type, Operator** source_op) {
-  if (op_type == OperatorType::kNone) {
-    CHECK(!source_op);
-  } else {
-    CHECK(source_op);
-    *source_op = GetOpWithOutput(model, array_name);
-    if (*source_op == nullptr) {
-      return false;
-    }
-
-    // Check that first operator, if connected, is of correct type
-    if ((*source_op)->type != op_type) {
-      return false;
+bool GetStateArrayForBackEdge(const Model& model,
+                              const string& back_edge_source_array,
+                              string* state_array = nullptr) {
+  for (const auto& rnn_state : model.flags.rnn_states()) {
+    if (back_edge_source_array == rnn_state.back_edge_source_array()) {
+      // Found LSTM cell output
+      if (state_array) {
+        *state_array = rnn_state.state_array();
+      }
+      return true;
     }
   }
-
-  return true;
+  return false;
 }
 
 // Returns true if the given operator has exactly 1 input, and is connected to
@@ -67,8 +62,22 @@ bool MatchOperatorInputs(const Operator& op, const Model& model,
   }
 
   // Check if first input is disconnected/connected to an operator
-  if (!ValidateSourceOp(model, op.inputs[0], op_type, connected_op)) {
+  Operator* x = GetOpWithOutput(model, op.inputs[0]);
+  if ((op_type == OperatorType::kNone) && (x != nullptr)) {
     return false;
+  }
+  if ((op_type != OperatorType::kNone) && (x == nullptr)) {
+    return false;
+  }
+
+  // Check that first operator, if connected, is of correct type
+  if ((x != nullptr) && (x->type != op_type)) {
+    return false;
+  }
+
+  // Successfully matched. Optionally return matching input operators.
+  if (connected_op) {
+    *connected_op = x;
   }
 
   return true;
@@ -87,15 +96,40 @@ bool MatchOperatorInputs(const Operator& op, const Model& model,
   }
 
   // Check if first input is disconnected/connected to an operator
-  if (!ValidateSourceOp(model, op.inputs[0], a_op_type, a_op)) {
+  Operator* x = GetOpWithOutput(model, op.inputs[0]);
+  if ((a_op_type == OperatorType::kNone) && (x != nullptr)) {
+    return false;
+  }
+  if ((a_op_type != OperatorType::kNone) && (x == nullptr)) {
+    return false;
+  }
+
+  // Check that first operator, if connected, is of correct type
+  if ((x != nullptr) && (x->type != a_op_type)) {
     return false;
   }
 
   // Check if second input is disconnected/connected to an operator
-  if (!ValidateSourceOp(model, op.inputs[1], b_op_type, b_op)) {
+  Operator* y = GetOpWithOutput(model, op.inputs[1]);
+  if ((b_op_type == OperatorType::kNone) && (y != nullptr)) {
+    return false;
+  }
+  if ((b_op_type != OperatorType::kNone) && (y == nullptr)) {
     return false;
   }
 
+  // Check that second operator, if connected, is of correct type
+  if ((y != nullptr) && (y->type != b_op_type)) {
+    return false;
+  }
+
+  // Successfully matched. Optionally return matching input operators.
+  if (a_op != nullptr) {
+    *a_op = x;
+  }
+  if (b_op != nullptr) {
+    *b_op = y;
+  }
   return true;
 }
 
@@ -113,20 +147,57 @@ bool MatchOperatorInputs(const Operator& op, const Model& model,
   }
 
   // Check if first input is disconnected/connected to an operator
-  if (!ValidateSourceOp(model, op.inputs[0], a_op_type, a_op)) {
+  Operator* x = GetOpWithOutput(model, op.inputs[0]);
+  if ((a_op_type == OperatorType::kNone) && (x != nullptr)) {
+    return false;
+  }
+  if ((a_op_type != OperatorType::kNone) && (x == nullptr)) {
+    return false;
+  }
+
+  // Check that first operator, if connected, is of correct type
+  if ((x != nullptr) && (x->type != a_op_type)) {
     return false;
   }
 
   // Check if second input is disconnected/connected to an operator
-  if (!ValidateSourceOp(model, op.inputs[1], b_op_type, b_op)) {
+  Operator* y = GetOpWithOutput(model, op.inputs[1]);
+  if ((b_op_type == OperatorType::kNone) && (y != nullptr)) {
+    return false;
+  }
+  if ((b_op_type != OperatorType::kNone) && (y == nullptr)) {
+    return false;
+  }
+
+  // Check that second operator, if connected, is of correct type
+  if ((y != nullptr) && (y->type != b_op_type)) {
     return false;
   }
 
   // Check if third input is disconnected/connected to an operator
-  if (!ValidateSourceOp(model, op.inputs[2], c_op_type, c_op)) {
+  Operator* z = GetOpWithOutput(model, op.inputs[2]);
+  if ((c_op_type == OperatorType::kNone) && (z != nullptr)) {
+    return false;
+  }
+  if ((c_op_type != OperatorType::kNone) && (z == nullptr)) {
     return false;
   }
 
+  // Check that third operator, if connected, is of correct type
+  if ((z != nullptr) && (z->type != c_op_type)) {
+    return false;
+  }
+
+  // Successfully matched. Optionally return matching input operators.
+  if (a_op != nullptr) {
+    *a_op = x;
+  }
+  if (b_op != nullptr) {
+    *b_op = y;
+  }
+  if (c_op != nullptr) {
+    *c_op = z;
+  }
   return true;
 }
 
@@ -160,6 +231,11 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                            &state_combine_add)) {
     return false;
   }
+  string prev_state;
+  if (!GetStateArrayForBackEdge(*model, state_output_tanh->inputs[0],
+                                &prev_state)) {
+    return false;
+  }
 
   // State forget & remember addition
   Operator *state_forget_mul, *state_remember_mul;
@@ -168,7 +244,9 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                            &state_remember_mul)) {
     return false;
   }
-  const string prev_state = state_forget_mul->inputs[0];
+  if (state_forget_mul->inputs[0] != prev_state) {
+    return false;
+  }
 
   // State forget gate
   Operator* state_forget_sig;
@@ -188,26 +266,26 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
 
   // State remember "information" activation function
   Operator* fc_output_split;
-  if (!MatchOperatorInputs(*state_info_tanh, *model, OperatorType::kSplit,
-                           &fc_output_split)) {
+  if (!MatchOperatorInputs(*state_info_tanh, *model,
+                           OperatorType::kTensorFlowSplit, &fc_output_split)) {
     return false;
   }
   // State remember gate activation function
   Operator* tmp;
-  if (!MatchOperatorInputs(*state_remember_sig, *model, OperatorType::kSplit,
-                           &tmp) ||
+  if (!MatchOperatorInputs(*state_remember_sig, *model,
+                           OperatorType::kTensorFlowSplit, &tmp) ||
       (tmp != fc_output_split)) {
     return false;
   }
   // State forget gate activation function
-  if (!MatchOperatorInputs(*state_forget_sig, *model, OperatorType::kSplit,
-                           &tmp) ||
+  if (!MatchOperatorInputs(*state_forget_sig, *model,
+                           OperatorType::kTensorFlowSplit, &tmp) ||
       (tmp != fc_output_split)) {
     return false;
   }
   // Fully connected output activation function
-  if (!MatchOperatorInputs(*fc_output_sig, *model, OperatorType::kSplit,
-                           &tmp) ||
+  if (!MatchOperatorInputs(*fc_output_sig, *model,
+                           OperatorType::kTensorFlowSplit, &tmp) ||
       (tmp != fc_output_split)) {
     return false;
   }
@@ -228,8 +306,8 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
     return false;
   }
 
-  if (static_cast<FullyConnectedOperator*>(fully_connected)->weights_format !=
-      FullyConnectedWeightsFormat::kDefault) {
+  if (static_cast<FullyConnectedOperator*>(fully_connected)
+          ->experimental_shuffled_weights) {
     // Not yet implemented: experimental shuffled weights in fused LSTM cell.
     return false;
   }

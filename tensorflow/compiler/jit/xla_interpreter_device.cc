@@ -52,7 +52,6 @@ Status XlaInterpreterDeviceFactory::CreateDevices(
                                        DEVICE_INTERPRETER_XLA_JIT, options,
                                        name_prefix, registration,
                                        /*transfer_as_literal=*/false,
-                                       /*use_multiple_streams=*/false,
                                        /*shape_representation_fn=*/{},
                                        /*padded_shape_fn=*/{}, &device));
   devices->push_back(device.release());

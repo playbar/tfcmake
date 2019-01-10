@@ -1,10 +1,9 @@
 op {
   graph_op_name: "FFT"
   endpoint {
-    name: "spectral.fft"
+    name: "fft"
   }
   endpoint {
-    name: "fft"
-    deprecated: true
+    name: "spectral.fft"
   }
 }

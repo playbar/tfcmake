@@ -30,7 +30,8 @@ namespace tensorflow {
 // TODO(phawkins): check for negative values on the diagonal and return an
 // error, instead of silently yielding NaNs.
 // TODO(znado): handle the complex Hermitian case
-xla::XlaOp Cholesky(xla::XlaOp a, int64 block_size = 256);
+xla::StatusOr<xla::XlaOp> Cholesky(xla::XlaBuilder* builder, xla::XlaOp a,
+                                   int64 block_size = 256);
 
 }  // namespace tensorflow
 

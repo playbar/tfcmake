@@ -37,11 +37,6 @@ Scope& Scope::operator=(const Scope& other) {
   return *this;
 }
 
-namespace {
-const char kScopeSeparator[] = "/";
-const char kSuffixSeparator[] = "_";
-}  // namespace
-
 Scope::Impl::Impl(Graph* graph, Status* status, NameMap* name_map,
                   ShapeRefiner* refiner, bool disable_shape_inference)
     : graph_(graph),
@@ -313,23 +308,19 @@ string Scope::Impl::GetUniqueName(const string& prefix,
     return prefix;
   }
   auto entry = name_map_->find(prefix);
+  string unique_name = prefix;
   if (entry == name_map_->end()) {
     name_map_->insert({prefix, 0});
-    return prefix;
+  } else {
+    unique_name = strings::StrCat(unique_name, "_", ++entry->second);
   }
-  string unique_name;
-  do {
-    unique_name = strings::StrCat(prefix, kSuffixSeparator, ++entry->second);
-  } while (name_map_->find(unique_name) != name_map_->end());
-  name_map_->insert({unique_name, 0});
   return unique_name;
 }
 
 string Scope::Impl::GetNameForOp(const string& default_name) const {
   const string unique_name =
       GetUniqueName(default_name, true /* check_single_use */);
-  const string sep =
-      name_.empty() || unique_name.empty() ? "" : kScopeSeparator;
+  const string sep = name_.empty() || unique_name.empty() ? "" : "/";
   return strings::StrCat(name_, sep, unique_name);
 }
 
@@ -354,8 +345,7 @@ Scope Scope::NewSubScope(const string& child_scope_name) const {
   }
   const string unique_name =
       impl()->GetUniqueName(child_scope_name, false /* check_single_use */);
-  const string sep =
-      impl()->name_.empty() || unique_name.empty() ? "" : kScopeSeparator;
+  const string sep = impl()->name_.empty() || unique_name.empty() ? "" : "/";
   return Scope(new Impl(*this, Impl::Tags::ScopeName(),
                         strings::StrCat(impl()->name_, sep, unique_name),
                         false /* copy_names */));
@@ -422,7 +412,7 @@ CompositeOpScopes Scope::GetCompositeOpScopes(
   if (!impl()->single_use_scope()) {
     Scope child = NewSubScope(impl()->op_name_.empty() ? composite_op_name
                                                        : impl()->op_name_);
-    const string child_op_sep = impl()->name_.empty() ? "" : kSuffixSeparator;
+    const string child_op_sep = impl()->name_.empty() ? "" : "_";
     const string child_name =
         strings::StrCat(impl()->name_, child_op_sep, child.impl()->name_);
     return {child,
@@ -445,13 +435,7 @@ class InternalScope {
   static Scope NewScope(Graph* graph, Status* status, ShapeRefiner* refiner) {
     Scope::Impl::NameMap* name_map = new Scope::Impl::NameMap;
     for (const Node* node : graph->nodes()) {
-      const string& name = node->name();
-      (*name_map)[name] = 0;
-      // Add all name prefixes ('/' separated).
-      size_t idx = -1;
-      while ((idx = name.find(kScopeSeparator, idx + 1)) != string::npos) {
-        (*name_map)[name.substr(0, idx)] = 0;
-      }
+      (*name_map)[node->name()] = 0;
     }
     // We provide null destructors for these shared ptrs (except for name_map)
     // since the caller owns them and doesn't want the scope to destroy them.

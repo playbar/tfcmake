@@ -19,7 +19,7 @@ limitations under the License.
 #include <atomic>
 #include <unordered_set>
 
-#include "grpcpp/grpcpp.h"
+#include "grpc++/grpc++.h"
 #include "tensorflow/core/debug/debug_io_utils.h"
 #include "tensorflow/core/debug/debug_service.grpc.pb.h"
 #include "tensorflow/core/framework/tensor.h"

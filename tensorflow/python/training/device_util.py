@@ -27,15 +27,13 @@ def canonicalize(d, default=None):
   """Canonicalize device string.
 
   If d has missing components, the rest would be deduced from the `default`
-  argument or from '/replica:0/task:0/device:CPU:0'. For example:
+  argument or from '/job:localhost/replica:0/task:0/device:CPU:0'. For example:
     If d = '/cpu:0', default='/job:worker/task:1', it returns
       '/job:worker/replica:0/task:1/device:CPU:0'.
     If d = '/cpu:0', default='/job:worker', it returns
       '/job:worker/replica:0/task:0/device:CPU:0'.
     If d = '/gpu:0', default=None, it returns
-      '/replica:0/task:0/device:GPU:0'.
-
-  Note: This uses "job:localhost" as the default if executing eagerly.
+      '/job:localhost/replica:0/task:0/device:GPU:0'.
 
   Args:
     d: a device string.
@@ -49,9 +47,7 @@ def canonicalize(d, default=None):
       "Device type '%s' must be all-caps." % (d.device_type,))
   # Fill in missing device fields using defaults.
   result = tf_device.DeviceSpec(
-      replica=0, task=0, device_type="CPU", device_index=0)
-  if context.executing_eagerly():
-    result.job = "localhost"
+      job="localhost", replica=0, task=0, device_type="CPU", device_index=0)
   if default:
     result.merge_from(tf_device.DeviceSpec.from_string(default))
   result.merge_from(d)

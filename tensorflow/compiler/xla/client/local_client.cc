@@ -51,17 +51,24 @@ LocalExecutable::LocalExecutable(std::unique_ptr<Executable> executable,
 Status LocalExecutable::ValidateExecutionOptions(
     const tensorflow::gtl::ArraySlice<const ShapedBuffer*> arguments,
     const ExecutableRunOptions& run_options, const Backend& backend) {
-  const ComputationLayout& computation_layout =
-      executable_->module_config().entry_computation_layout();
+  const ComputationLayout& host_computation_layout =
+      executable_->module_config().host_entry_computation_layout();
+  const ComputationLayout& device_computation_layout =
+      executable_->module_config().device_entry_computation_layout();
 
   // Check argument number, shapes, and layouts.
-  if (arguments.size() != computation_layout.parameter_count()) {
+  if (arguments.size() != host_computation_layout.parameter_count()) {
     return InvalidArgument(
         "invalid number of arguments for computation: expected %d, got %zu",
-        computation_layout.parameter_count(), arguments.size());
+        host_computation_layout.parameter_count(), arguments.size());
+  }
+  if (arguments.size() != device_computation_layout.parameter_count()) {
+    return InvalidArgument(
+        "invalid number of arguments for computation: expected %d, got %zu",
+        device_computation_layout.parameter_count(), arguments.size());
   }
   for (int i = 0; i < arguments.size(); ++i) {
-    if (!computation_layout.parameter_layout(i).MatchesLayoutInShape(
+    if (!host_computation_layout.parameter_layout(i).MatchesLayoutInShape(
             arguments[i]->on_host_shape())) {
       return InvalidParameterArgument(
           executable_.get(), i,
@@ -69,9 +76,23 @@ Status LocalExecutable::ValidateExecutionOptions(
           "parameter "
           "%d: want %s, got %s",
           i,
-          ShapeUtil::HumanString(computation_layout.parameter_layout(i).shape())
+          ShapeUtil::HumanString(
+              host_computation_layout.parameter_layout(i).shape())
               .c_str(),
           ShapeUtil::HumanString(arguments[i]->on_host_shape()).c_str());
+    }
+    if (!device_computation_layout.parameter_layout(i).MatchesLayoutInShape(
+            arguments[i]->on_device_shape())) {
+      return InvalidParameterArgument(
+          executable_.get(), i,
+          "Argument does not match device shape or layout of computation "
+          "parameter "
+          "%d: want %s, got %s",
+          i,
+          ShapeUtil::HumanString(
+              device_computation_layout.parameter_layout(i).shape())
+              .c_str(),
+          ShapeUtil::HumanString(arguments[i]->on_device_shape()).c_str());
     }
   }
 
@@ -164,7 +185,7 @@ StatusOr<ScopedShapedBuffer> LocalExecutable::Run(
       run_options, backend_->StreamBorrower(),
       backend_->eigen_intra_op_thread_pool());
 
-  if (executable_->dumping_snapshot()) {
+  if (executable_->dumping()) {
     return ExecuteAndDump(&service_options, arguments);
   }
   return executable_->ExecuteOnStreamWrapper(
@@ -174,44 +195,45 @@ StatusOr<ScopedShapedBuffer> LocalExecutable::Run(
 StatusOr<ScopedShapedBuffer> LocalExecutable::ExecuteAndDump(
     const ServiceExecutableRunOptions* run_options,
     const tensorflow::gtl::ArraySlice<const ShapedBuffer*> arguments) {
-  executable_->hlo_snapshot()->set_execution_platform(
+  executable_->session_module()->set_execution_platform(
       backend_->platform()->Name());
-  TF_RETURN_IF_ERROR(RecordArguments(arguments, executable_->hlo_snapshot()));
+  TF_RETURN_IF_ERROR(RecordArguments(arguments, executable_->session_module()));
   TF_ASSIGN_OR_RETURN(
       ScopedShapedBuffer result,
       executable_->ExecuteOnStream(run_options, arguments,
                                    /*hlo_execution_profile=*/nullptr));
-  TF_RETURN_IF_ERROR(RecordResult(&result, executable_->hlo_snapshot()));
-  TF_RETURN_IF_ERROR(executable_->DumpHloSnapshot());
+  TF_RETURN_IF_ERROR(RecordResult(&result, executable_->session_module()));
+  TF_RETURN_IF_ERROR(executable_->DumpSessionModule());
   return std::move(result);
 }
 
 Status LocalExecutable::RecordArguments(
     const tensorflow::gtl::ArraySlice<const ShapedBuffer*> arguments,
-    HloSnapshot* hlo_snapshot) {
-  hlo_snapshot->clear_arguments();
+    SessionModule* session_module) {
+  session_module->clear_arguments();
   for (const ShapedBuffer* argument : arguments) {
     TF_ASSIGN_OR_RETURN(std::unique_ptr<Literal> literal,
                         LiteralFromShapedBuffer(*argument));
-    *hlo_snapshot->add_arguments() = literal->ToProto();
+    *session_module->add_arguments() = literal->ToProto();
   }
   return Status::OK();
 }
 
 Status LocalExecutable::RecordResult(const ShapedBuffer* result,
-                                     HloSnapshot* hlo_snapshot) {
-  hlo_snapshot->clear_result();
+                                     SessionModule* session_module) {
+  session_module->clear_result();
   TF_ASSIGN_OR_RETURN(std::unique_ptr<Literal> literal,
                       LiteralFromShapedBuffer(*result));
-  *hlo_snapshot->mutable_result() = literal->ToProto();
+  *session_module->mutable_result() = literal->ToProto();
   return Status::OK();
 }
 
 StatusOr<std::unique_ptr<Literal>> LocalExecutable::LiteralFromShapedBuffer(
     const ShapedBuffer& shaped_buffer) {
-  TF_ASSIGN_OR_RETURN(auto stream,
-                      backend_->BorrowStream(shaped_buffer.device_ordinal()));
-  return backend_->transfer_manager()->TransferLiteralFromDevice(stream.get(),
+  TF_ASSIGN_OR_RETURN(
+      se::StreamExecutor * executor,
+      backend_->stream_executor(shaped_buffer.device_ordinal()));
+  return backend_->transfer_manager()->TransferLiteralFromDevice(executor,
                                                                  shaped_buffer);
 }
 
@@ -266,18 +288,19 @@ StatusOr<ScopedShapedBuffer> LocalClient::LiteralToShapedBuffer(
   TF_ASSIGN_OR_RETURN(auto scoped_buffer,
                       backend().transfer_manager()->AllocateScopedShapedBuffer(
                           literal.shape(), allocator, device_ordinal));
-  TF_ASSIGN_OR_RETURN(auto stream,
-                      mutable_backend()->BorrowStream(device_ordinal));
+  TF_ASSIGN_OR_RETURN(se::StreamExecutor * executor,
+                      backend().stream_executor(device_ordinal));
   TF_RETURN_IF_ERROR(backend().transfer_manager()->TransferLiteralToDevice(
-      stream.get(), literal, scoped_buffer));
+      executor, literal, scoped_buffer));
   return std::move(scoped_buffer);
 }
 
 StatusOr<std::unique_ptr<Literal>> LocalClient::ShapedBufferToLiteral(
     const ShapedBuffer& shaped_buffer) {
-  TF_ASSIGN_OR_RETURN(auto stream, mutable_backend()->BorrowStream(
-                                       shaped_buffer.device_ordinal()));
-  return backend().transfer_manager()->TransferLiteralFromDevice(stream.get(),
+  TF_ASSIGN_OR_RETURN(
+      se::StreamExecutor * executor,
+      backend().stream_executor(shaped_buffer.device_ordinal()));
+  return backend().transfer_manager()->TransferLiteralFromDevice(executor,
                                                                  shaped_buffer);
 }
 

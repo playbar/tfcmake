@@ -20,6 +20,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -34,8 +36,8 @@ public class SessionTest {
         Session s = new Session(g)) {
       TestUtil.transpose_A_times_X(g, new int[][] {{2}, {3}});
       try (Tensor<Integer> x = Tensors.create(new int[][] {{5}, {7}});
-          TestUtil.AutoCloseableList<Tensor<?>> outputs =
-              new TestUtil.AutoCloseableList<Tensor<?>>(s.runner().feed("X", x).fetch("Y").run())) {
+          AutoCloseableList<Tensor<?>> outputs =
+              new AutoCloseableList<Tensor<?>>(s.runner().feed("X", x).fetch("Y").run())) {
         assertEquals(1, outputs.size());
         final int[][] expected = {{31}};
         assertArrayEquals(expected, outputs.get(0).copyTo(new int[1][1]));
@@ -51,8 +53,8 @@ public class SessionTest {
       Output<Integer> feed = g.operation("X").output(0);
       Output<Integer> fetch = g.operation("Y").output(0);
       try (Tensor<Integer> x = Tensors.create(new int[][] {{5}, {7}});
-          TestUtil.AutoCloseableList<Tensor<?>> outputs =
-              new TestUtil.AutoCloseableList<Tensor<?>>(s.runner().feed(feed, x).fetch(fetch).run())) {
+          AutoCloseableList<Tensor<?>> outputs =
+              new AutoCloseableList<Tensor<?>>(s.runner().feed(feed, x).fetch(fetch).run())) {
         assertEquals(1, outputs.size());
         final int[][] expected = {{31}};
         assertArrayEquals(expected, outputs.get(0).copyTo(new int[1][1]));
@@ -110,7 +112,7 @@ public class SessionTest {
                 .setOptions(fullTraceRunOptions())
                 .runAndFetchMetadata();
         // Sanity check on outputs.
-        TestUtil.AutoCloseableList<Tensor<?>> outputs = new TestUtil.AutoCloseableList<Tensor<?>>(result.outputs);
+        AutoCloseableList<Tensor<?>> outputs = new AutoCloseableList<Tensor<?>>(result.outputs);
         assertEquals(1, outputs.size());
         final int[][] expected = {{31}};
         assertArrayEquals(expected, outputs.get(0).copyTo(new int[1][1]));
@@ -133,8 +135,8 @@ public class SessionTest {
         Session s = new Session(g)) {
       TestUtil.constant(g, "c1", 2718);
       TestUtil.constant(g, "c2", 31415);
-      TestUtil.AutoCloseableList<Tensor<?>> outputs =
-          new TestUtil.AutoCloseableList<Tensor<?>>(s.runner().fetch("c2").fetch("c1").run());
+      AutoCloseableList<Tensor<?>> outputs =
+          new AutoCloseableList<Tensor<?>>(s.runner().fetch("c2").fetch("c1").run());
       assertEquals(2, outputs.size());
       assertEquals(31415, outputs.get(0).intValue());
       assertEquals(2718, outputs.get(1).intValue());
@@ -160,6 +162,28 @@ public class SessionTest {
   public void createWithConfigProto() {
     try (Graph g = new Graph();
         Session s = new Session(g, singleThreadConfigProto())) {}
+  }
+
+  private static final class AutoCloseableList<E extends AutoCloseable> extends ArrayList<E>
+      implements AutoCloseable {
+    AutoCloseableList(Collection<? extends E> c) {
+      super(c);
+    }
+
+    @Override
+    public void close() {
+      Exception toThrow = null;
+      for (AutoCloseable c : this) {
+        try {
+          c.close();
+        } catch (Exception e) {
+          toThrow = e;
+        }
+      }
+      if (toThrow != null) {
+        throw new RuntimeException(toThrow);
+      }
+    }
   }
 
   private static byte[] fullTraceRunOptions() {

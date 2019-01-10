@@ -127,6 +127,9 @@ class StatsCalculator {
 
   std::string GetShortSummary() const;
 
+  // Prints the string returned by GetOutputString().
+  void PrintStepStats() const;
+
   void ComputeStatsByType(
       std::map<std::string, int64_t>* node_type_map_count,
       std::map<std::string, int64_t>* node_type_map_time,
@@ -163,10 +166,7 @@ class StatsCalculator {
   };
 
   const std::map<std::string, Detail>& GetDetails() const { return details_; }
-
-  void AddNodeStats(const std::string& name, const std::string& type,
-                    int64_t run_order, int64_t start_us, int64_t rel_end_us,
-                    int64_t mem_used);
+  void UpdateDetails(const std::map<std::string, Detail>& details);
 
  private:
   void OrderNodesByMetric(SortingMetric sorting_metric,

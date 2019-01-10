@@ -13,7 +13,8 @@ cc_library(
     deps = [
         "//tensorflow/contrib/lite:framework",
         "//tensorflow/contrib/lite/kernels:builtin_ops",
-        "//third_party/py/numpy:headers",
+        "//tensorflow/core:lib",
+        "//tensorflow/python:numpy_lib",
         "//third_party/python_runtime:headers",
         "@com_google_absl//absl/memory",
     ],

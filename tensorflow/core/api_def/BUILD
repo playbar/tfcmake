@@ -4,7 +4,6 @@
 # The following targets can be used to access ApiDefs:
 #   :base_api_def
 #   :python_api_def
-#   :java_api_def
 
 package(
     default_visibility = ["//visibility:private"],
@@ -27,12 +26,6 @@ filegroup(
 filegroup(
     name = "python_api_def",
     srcs = glob(["python_api/*"]),
-    visibility = ["//tensorflow:internal"],
-)
-
-filegroup(
-    name = "java_api_def",
-    srcs = glob(["java_api/*"]),
     visibility = ["//tensorflow:internal"],
 )
 

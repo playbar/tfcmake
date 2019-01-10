@@ -34,7 +34,6 @@ ops.NotDifferentiable("TensorArrayCloseV2")
 
 ops.NotDifferentiable("TensorArrayV3")
 ops.NotDifferentiable("TensorArrayGradV3")
-ops.NotDifferentiable("TensorArrayGradWithShape")
 ops.NotDifferentiable("TensorArraySizeV3")
 ops.NotDifferentiable("TensorArrayCloseV3")
 

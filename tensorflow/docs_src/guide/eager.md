@@ -225,7 +225,7 @@ the tape backwards and then discard. A particular `tf.GradientTape` can only
 compute one gradient; subsequent calls throw a runtime error.
 
 ```py
-w = tf.Variable([[1.0]])
+w = tfe.Variable([[1.0]])
 with tf.GradientTape() as tape:
   loss = w * w
 
@@ -260,8 +260,8 @@ def grad(weights, biases):
 train_steps = 200
 learning_rate = 0.01
 # Start with arbitrary values for W and B on the same batch of data
-W = tf.Variable(5.)
-B = tf.Variable(10.)
+W = tfe.Variable(5.)
+B = tfe.Variable(10.)
 
 print("Initial loss: {:.3f}".format(loss(W, B)))
 
@@ -407,11 +407,11 @@ with tf.device("/gpu:0"):
 
 ### Variables and optimizers
 
-`tf.Variable` objects store mutable `tf.Tensor` values accessed during
+`tfe.Variable` objects store mutable `tf.Tensor` values accessed during
 training to make automatic differentiation easier. The parameters of a model can
 be encapsulated in classes as variables.
 
-Better encapsulate model parameters by using `tf.Variable` with
+Better encapsulate model parameters by using `tfe.Variable` with
 `tf.GradientTape`. For example, the automatic differentiation example above
 can be rewritten:
 
@@ -419,9 +419,9 @@ can be rewritten:
 class Model(tf.keras.Model):
   def __init__(self):
     super(Model, self).__init__()
-    self.W = tf.Variable(5., name='weight')
-    self.B = tf.Variable(10., name='bias')
-  def call(self, inputs):
+    self.W = tfe.Variable(5., name='weight')
+    self.B = tfe.Variable(10., name='bias')
+  def predict(self, inputs):
     return inputs * self.W + self.B
 
 # A toy dataset of points around 3 * x + 2
@@ -432,7 +432,7 @@ training_outputs = training_inputs * 3 + 2 + noise
 
 # The loss function to be optimized
 def loss(model, inputs, targets):
-  error = model(inputs) - targets
+  error = model.predict(inputs) - targets
   return tf.reduce_mean(tf.square(error))
 
 def grad(model, inputs, targets):
@@ -498,19 +498,19 @@ is removed, and is then deleted.
 
 ```py
 with tf.device("gpu:0"):
-  v = tf.Variable(tf.random_normal([1000, 1000]))
+  v = tfe.Variable(tf.random_normal([1000, 1000]))
   v = None  # v no longer takes up GPU memory
 ```
 
 ### Object-based saving
 
-`tf.train.Checkpoint` can save and restore `tf.Variable`s to and from
+`tfe.Checkpoint` can save and restore `tfe.Variable`s to and from
 checkpoints:
 
 ```py
-x = tf.Variable(10.)
+x = tfe.Variable(10.)
 
-checkpoint = tf.train.Checkpoint(x=x)  # save as "x"
+checkpoint = tfe.Checkpoint(x=x)  # save as "x"
 
 x.assign(2.)   # Assign a new value to the variables and save.
 save_path = checkpoint.save('./ckpt/')
@@ -523,18 +523,18 @@ checkpoint.restore(save_path)
 print(x)  # => 2.0
 ```
 
-To save and load models, `tf.train.Checkpoint` stores the internal state of objects,
+To save and load models, `tfe.Checkpoint` stores the internal state of objects,
 without requiring hidden variables. To record the state of a `model`,
-an `optimizer`, and a global step, pass them to a `tf.train.Checkpoint`:
+an `optimizer`, and a global step, pass them to a `tfe.Checkpoint`:
 
 ```py
 model = MyModel()
 optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
 checkpoint_dir = ‘/path/to/model_dir’
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
-root = tf.train.Checkpoint(optimizer=optimizer,
-                           model=model,
-                           optimizer_step=tf.train.get_or_create_global_step())
+root = tfe.Checkpoint(optimizer=optimizer,
+                      model=model,
+                      optimizer_step=tf.train.get_or_create_global_step())
 
 root.save(file_prefix=checkpoint_prefix)
 # or
@@ -612,7 +612,7 @@ def line_search_step(fn, init_x, rate=1.0):
 `tf.GradientTape` is a powerful interface for computing gradients, but there
 is another [Autograd](https://github.com/HIPS/autograd)-style API available for
 automatic differentiation. These functions are useful if writing math code with
-only tensors and gradient functions, and without `tf.Variables`:
+only tensors and gradient functions, and without `tfe.Variables`:
 
 * `tfe.gradients_function` —Returns a function that computes the derivatives
   of its input function parameter with respect to its arguments. The input
@@ -824,7 +824,7 @@ gives you eager's interactive experimentation and debuggability with the
 distributed performance benefits of graph execution.
 
 Write, debug, and iterate in eager execution, then import the model graph for
-production deployment. Use `tf.train.Checkpoint` to save and restore model
+production deployment. Use `tfe.Checkpoint` to save and restore model
 variables, this allows movement between eager and graph execution environments.
 See the examples in:
 [tensorflow/contrib/eager/python/examples](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/eager/python/examples).

@@ -21,7 +21,6 @@ from __future__ import print_function
 import collections
 import time
 
-from absl.testing import parameterized
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
@@ -34,22 +33,7 @@ from tensorflow.python.platform import test
 from tensorflow.python.util import nest
 
 
-class _CustomMapping(collections.Mapping):
-
-  def __init__(self, *args, **kwargs):
-    self._wrapped = dict(*args, **kwargs)
-
-  def __getitem__(self, key):
-    return self._wrapped[key]
-
-  def __iter__(self):
-    return iter(self._wrapped)
-
-  def __len__(self):
-    return len(self._wrapped)
-
-
-class NestTest(parameterized.TestCase, test.TestCase):
+class NestTest(test.TestCase):
 
   PointXY = collections.namedtuple("Point", ["x", "y"])  # pylint: disable=invalid-name
 
@@ -88,32 +72,26 @@ class NestTest(parameterized.TestCase, test.TestCase):
     with self.assertRaises(ValueError):
       nest.pack_sequence_as([5, 6, [7, 8]], ["a", "b", "c"])
 
-  @parameterized.parameters({"mapping_type": collections.OrderedDict},
-                            {"mapping_type": _CustomMapping})
   @test_util.assert_no_new_pyobjects_executing_eagerly
-  def testFlattenDictOrder(self, mapping_type):
+  def testFlattenDictOrder(self):
     """`flatten` orders dicts by key, including OrderedDicts."""
-    ordered = mapping_type([("d", 3), ("b", 1), ("a", 0), ("c", 2)])
+    ordered = collections.OrderedDict([("d", 3), ("b", 1), ("a", 0), ("c", 2)])
     plain = {"d": 3, "b": 1, "a": 0, "c": 2}
     ordered_flat = nest.flatten(ordered)
     plain_flat = nest.flatten(plain)
     self.assertEqual([0, 1, 2, 3], ordered_flat)
     self.assertEqual([0, 1, 2, 3], plain_flat)
 
-  @parameterized.parameters({"mapping_type": collections.OrderedDict},
-                            {"mapping_type": _CustomMapping})
-  def testPackDictOrder(self, mapping_type):
+  def testPackDictOrder(self):
     """Packing orders dicts by key, including OrderedDicts."""
-    custom = mapping_type([("d", 0), ("b", 0), ("a", 0), ("c", 0)])
+    ordered = collections.OrderedDict([("d", 0), ("b", 0), ("a", 0), ("c", 0)])
     plain = {"d": 0, "b": 0, "a": 0, "c": 0}
     seq = [0, 1, 2, 3]
-    custom_reconstruction = nest.pack_sequence_as(custom, seq)
+    ordered_reconstruction = nest.pack_sequence_as(ordered, seq)
     plain_reconstruction = nest.pack_sequence_as(plain, seq)
-    self.assertIsInstance(custom_reconstruction, mapping_type)
-    self.assertIsInstance(plain_reconstruction, dict)
     self.assertEqual(
-        mapping_type([("d", 3), ("b", 1), ("a", 0), ("c", 2)]),
-        custom_reconstruction)
+        collections.OrderedDict([("d", 3), ("b", 1), ("a", 0), ("c", 2)]),
+        ordered_reconstruction)
     self.assertEqual({"d": 3, "b": 1, "a": 0, "c": 2}, plain_reconstruction)
 
   Abc = collections.namedtuple("A", ("b", "c"))  # pylint: disable=invalid-name
@@ -123,10 +101,8 @@ class NestTest(parameterized.TestCase, test.TestCase):
     # A nice messy mix of tuples, lists, dicts, and `OrderedDict`s.
     mess = [
         "z",
-        NestTest.Abc(3, 4), {
-            "d": _CustomMapping({
-                41: 4
-            }),
+        NestTest.Abc(3, 4),
+        {
             "c": [
                 1,
                 collections.OrderedDict([
@@ -135,19 +111,17 @@ class NestTest(parameterized.TestCase, test.TestCase):
                 ]),
             ],
             "b": 5
-        }, 17
+        },
+        17
     ]
 
     flattened = nest.flatten(mess)
-    self.assertEqual(flattened, ["z", 3, 4, 5, 1, 2, 3, 4, 17])
+    self.assertEqual(flattened, ["z", 3, 4, 5, 1, 2, 3, 17])
 
     structure_of_mess = [
         14,
         NestTest.Abc("a", True),
         {
-            "d": _CustomMapping({
-                41: 42
-            }),
             "c": [
                 0,
                 collections.OrderedDict([
@@ -167,10 +141,6 @@ class NestTest(parameterized.TestCase, test.TestCase):
     unflattened_ordered_dict = unflattened[2]["c"][1]
     self.assertIsInstance(unflattened_ordered_dict, collections.OrderedDict)
     self.assertEqual(list(unflattened_ordered_dict.keys()), ["b", "a"])
-
-    unflattened_custom_mapping = unflattened[2]["d"]
-    self.assertIsInstance(unflattened_custom_mapping, _CustomMapping)
-    self.assertEqual(list(unflattened_custom_mapping.keys()), [41])
 
   def testFlatten_numpyIsNotFlattened(self):
     structure = np.array([1, 2, 3])
@@ -209,23 +179,19 @@ class NestTest(parameterized.TestCase, test.TestCase):
     self.assertFalse(nest.is_sequence(math_ops.tanh(ones)))
     self.assertFalse(nest.is_sequence(np.ones((4, 5))))
 
-  @parameterized.parameters({"mapping_type": _CustomMapping},
-                            {"mapping_type": dict})
-  def testFlattenDictItems(self, mapping_type):
-    dictionary = mapping_type({(4, 5, (6, 8)): ("a", "b", ("c", "d"))})
+  def testFlattenDictItems(self):
+    dictionary = {(4, 5, (6, 8)): ("a", "b", ("c", "d"))}
     flat = {4: "a", 5: "b", 6: "c", 8: "d"}
     self.assertEqual(nest.flatten_dict_items(dictionary), flat)
 
     with self.assertRaises(TypeError):
       nest.flatten_dict_items(4)
 
-    bad_dictionary = mapping_type({(4, 5, (4, 8)): ("a", "b", ("c", "d"))})
+    bad_dictionary = {(4, 5, (4, 8)): ("a", "b", ("c", "d"))}
     with self.assertRaisesRegexp(ValueError, "not unique"):
       nest.flatten_dict_items(bad_dictionary)
 
-    another_bad_dictionary = mapping_type({
-        (4, 5, (6, 8)): ("a", "b", ("c", ("d", "e")))
-    })
+    another_bad_dictionary = {(4, 5, (6, 8)): ("a", "b", ("c", ("d", "e")))}
     with self.assertRaisesRegexp(
         ValueError, "Key had [0-9]* elements, but value had [0-9]* elements"):
       nest.flatten_dict_items(another_bad_dictionary)

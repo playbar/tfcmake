@@ -90,13 +90,12 @@ bool IdentifyDilatedConv::Run(Model* model, std::size_t op_index) {
   }
 
   // Conv Op
-  const string& input_of_conv_op =
-      has_expand_op ? post_stb_op->outputs[0] : stb_op->outputs[0];
-  auto* conv_base_op = GetOpWithInput(*model, input_of_conv_op);
-  if (conv_base_op->type != OperatorType::kConv) {
+  ConvOperator* conv_op = dynamic_cast<ConvOperator*>(
+      has_expand_op ? GetOpWithInput(*model, post_stb_op->outputs[0])
+                    : GetOpWithInput(*model, stb_op->outputs[0]));
+  if (!conv_op || conv_op->type != OperatorType::kConv) {
     return false;
   }
-  auto* conv_op = static_cast<ConvOperator*>(conv_base_op);
   if (conv_op->inputs.size() != 2) {
     // The conv op must only have weights, no bias.
     return false;

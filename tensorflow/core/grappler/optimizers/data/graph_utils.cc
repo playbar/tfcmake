@@ -16,15 +16,17 @@ limitations under the License.
 #include "tensorflow/core/grappler/optimizers/data/graph_utils.h"
 
 #include "tensorflow/core/framework/device_base.h"
+#include "tensorflow/core/grappler/clusters/virtual_cluster.h"
 #include "tensorflow/core/grappler/graph_view.h"
+#include "tensorflow/core/grappler/grappler_item.h"
+#include "tensorflow/core/grappler/grappler_item_builder.h"
+#include "tensorflow/core/grappler/optimizers/meta_optimizer.h"
 #include "tensorflow/core/util/ptr_util.h"
 
 namespace tensorflow {
 namespace grappler {
 namespace graph_utils {
 namespace {
-
-constexpr char kConstOpName[] = "Const";
 
 int FindNodeWithPredicate(const std::function<bool(const NodeDef&)>& predicate,
                           const GraphDef& graph) {
@@ -66,8 +68,9 @@ Status AddScalarConstNodeHelper(
     DataType dtype, const std::function<void(TensorProto*)>& add_value,
     GraphDef* graph, NodeDef** result) {
   NodeDef* node = graph->add_node();
-  node->set_op(kConstOpName);
-  SetUniqueName(kConstOpName, graph, node);
+  const string& name = strings::StrCat("Const/_", graph->node_size());
+  node->set_name(name);
+  node->set_op("Const");
   (*node->mutable_attr())["dtype"].set_type(dtype);
   std::unique_ptr<tensorflow::TensorProto> tensor =
       tensorflow::MakeUnique<tensorflow::TensorProto>();
@@ -91,7 +94,7 @@ Status AddNode(const string& name, const string& op,
   if (!name.empty()) {
     node->set_name(name);
   } else {
-    SetUniqueName(op, graph, node);
+    node->set_name(strings::StrCat(op, "/_", graph->node_size()));
   }
   node->set_op(op);
   for (const string& input : inputs) {
@@ -207,22 +210,6 @@ int FindNodeWithName(const string& name, const GraphDef& graph) {
 int FindNodeWithOp(const string& op, const GraphDef& graph) {
   return FindNodeWithPredicate(
       [op](const NodeDef& node) { return node.op() == op; }, graph);
-}
-
-void SetUniqueName(const string& op, GraphDef* graph, NodeDef* node) {
-  int id = graph->node_size();
-  while (ContainsNodeWithName(strings::StrCat(op, "/_", id), *graph)) {
-    ++id;
-  }
-  node->set_name(strings::StrCat(op, "/_", id));
-}
-
-void ReplaceInput(const NodeDef& old_input, const NodeDef& new_input,
-                  GraphView* graph) {
-  GraphView::OutputPort output_port = graph->GetOutputPort(old_input.name(), 0);
-  auto fanout = graph->GetFanout(output_port);
-  for (auto& input_port : fanout)
-    input_port.node->set_input(0, new_input.name());
 }
 
 }  // end namespace graph_utils

@@ -24,7 +24,6 @@ from __future__ import print_function
 import abc
 import collections
 import functools
-import os
 
 import six
 
@@ -39,7 +38,6 @@ from tensorflow.python.framework import sparse_tensor
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.framework import tensor_util
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import cond_v2_impl
 from tensorflow.python.ops import control_flow_util as util
 from tensorflow.python.ops import gen_array_ops
 from tensorflow.python.ops import gen_control_flow_ops
@@ -58,10 +56,6 @@ from tensorflow.python.util import deprecation
 from tensorflow.python.util import nest
 from tensorflow.python.util import tf_should_use
 from tensorflow.python.util.tf_export import tf_export
-
-
-_ENABLE_COND_V2 = os.getenv("TF_ENABLE_COND_V2", "0") != "0"
-
 
 # We override the 'tuple' for a control flow op, so we keep python's
 # existing 'tuple' for later use in this module.
@@ -602,6 +596,7 @@ def _EnforceShapeInvariant(merge_var, next_var):
       enter = merge_var.op.inputs[0].op
       assert util.IsLoopEnter(enter)
       input_t = enter.inputs[0]
+      assert input_t.shape == m_shape
       raise ValueError(
           "Input tensor '%s' enters the loop with shape %s, but has shape %s "
           "after one iteration. To allow the shape to vary across iterations, "
@@ -1999,9 +1994,6 @@ def cond(pred,
   ```
 
   """
-  if _ENABLE_COND_V2:
-    return cond_v2_impl.cond_v2(pred, true_fn, false_fn, name)
-
   # We needed to make true_fn/false_fn keyword arguments for
   # backwards-compatibility. This check exists so that we can convert back to
   # having them be positional arguments.
@@ -2737,8 +2729,7 @@ class WhileContext(ControlFlowContext):
           self.outer_context.Exit()
       else:
         shape_acc = array_ops.zeros_like(
-            array_ops.shape_internal(op.inputs[0], optimize=False,
-                                     out_type=dense_shape.dtype),
+            array_ops.shape_internal(op.inputs[0], optimize=False),
             optimize=False)
 
     if self.outer_context:
@@ -2932,8 +2923,7 @@ class WhileContext(ControlFlowContext):
 
     return original_body_result, exit_vars
 
-  def BuildLoop(self, pred, body, loop_vars, shape_invariants,
-                return_same_structure):
+  def BuildLoop(self, pred, body, loop_vars, shape_invariants):
     """Add the loop termination condition and body to the graph."""
 
     # Keep original_loop_vars to identify which are TensorArrays
@@ -2944,10 +2934,9 @@ class WhileContext(ControlFlowContext):
     loop_vars = ops.convert_n_to_tensor_or_indexed_slices(loop_vars)
     try:
       self.Enter()
-      # _BuildLoop calls _update_input in several places. _mutation_lock()
-      # ensures a Session.run call cannot occur between creating and mutating
-      # new ops.
-      with ops.get_default_graph()._mutation_lock():  # pylint: disable=protected-access
+      # _BuildLoop calls _update_input in several places. _lock ensures a
+      # Session.run call cannot occur between creating and mutating new ops.
+      with ops.get_default_graph()._lock:  # pylint: disable=protected-access
         original_body_result, exit_vars = self._BuildLoop(
             pred, body, original_loop_vars, loop_vars, shape_invariants)
     finally:
@@ -2961,11 +2950,7 @@ class WhileContext(ControlFlowContext):
     packed_exit_vars = nest.pack_sequence_as(
         structure=original_body_result,
         flat_sequence=exit_vars_with_tensor_arrays)
-
-    if return_same_structure:
-      return packed_exit_vars
-    else:
-      return packed_exit_vars[0] if len(exit_vars) == 1 else packed_exit_vars
+    return packed_exit_vars[0] if len(exit_vars) == 1 else packed_exit_vars
 
   def _FixControlInputsAndContext(self, enters):
     graph = ops.get_default_graph()
@@ -3005,8 +2990,7 @@ def while_loop(cond,
                back_prop=True,
                swap_memory=False,
                name=None,
-               maximum_iterations=None,
-               return_same_structure=False):
+               maximum_iterations=None):
   """Repeat `body` while the condition `cond` is true.
 
   `cond` is a callable returning a boolean scalar tensor. `body` is a callable
@@ -3082,16 +3066,11 @@ def while_loop(cond,
       to run.  If provided, the `cond` output is AND-ed with an additional
       condition ensuring the number of iterations executed is no greater than
       `maximum_iterations`.
-    return_same_structure: If True, output has same structure as `loop_vars`. If
-      eager execution is enabled, this is ignored (and always treated as True).
 
   Returns:
-    The output tensors for the loop variables after the loop.
-     If `return_same_structure` is True, the return value has the same
-     structure as `loop_vars`.
-     If `return_same_structure` is False, the return value is a Tensor,
-     TensorArray or IndexedSlice if the length of `loop_vars` is 1, or a list
-     otherwise.
+    The output tensors for the loop variables after the loop. When the length
+    of `loop_vars` is 1 this is a Tensor, TensorArray or IndexedSlice and when
+    the length of `loop_vars` is greater than 1 it returns a list.
 
   Raises:
     TypeError: if `cond` or `body` is not callable.
@@ -3146,7 +3125,6 @@ def while_loop(cond,
   happen is that the thread updating `x` can never get ahead of the
   counter thread because the thread incrementing `x` depends on the value
   of the counter.
-
   ```python
   import tensorflow as tf
 
@@ -3228,8 +3206,7 @@ def while_loop(cond,
     # be encapsulated in the root context.
     if loop_context.outer_context is None:
       ops.add_to_collection(ops.GraphKeys.WHILE_CONTEXT, loop_context)
-    result = loop_context.BuildLoop(cond, body, loop_vars, shape_invariants,
-                                    return_same_structure)
+    result = loop_context.BuildLoop(cond, body, loop_vars, shape_invariants)
     if maximum_iterations is not None:
       return result[1]
     else:
@@ -3360,6 +3337,12 @@ def group(*inputs, **kwargs):
     ops_on_device = {}  # device -> operations specified on the device.
     for inp in nest.flatten(inputs):
       if not hasattr(inp, "device"):
+        raise TypeError("Expected tf.group() expected Tensor arguments not "
+                        "'%s' with type '%s'" % (inp, type(inp)))
+      if not hasattr(inp, "device"):
+        if isinstance(inp, list):
+          raise TypeError("To call tf.group() with a list, use "
+                          "tf.group(*[...]) not tf.group([...]).")
         raise TypeError("Expected tf.group() expected Tensor arguments not "
                         "'%s' with type '%s'" % (inp, type(inp)))
       dev = inp.device

@@ -499,7 +499,6 @@ class NodeProcessor : public GraphProcessor {
       UpdateAttrDataFormat();
       UpdateAttrKSize();
       UpdateAttrStrides();
-      UpdateAttrDilations();
       UpdateAttrShape();
       TF_RETURN_IF_ERROR(AddLayoutTransposeToInputs());
       TF_RETURN_IF_ERROR(AddLayoutTransposeToOutputs());
@@ -739,13 +738,6 @@ class NodeProcessor : public GraphProcessor {
   void UpdateAttrStrides() {
     if (node_->attr().find("strides") != node_->attr().end()) {
       auto list = node_->mutable_attr()->at("strides").mutable_list();
-      UpdateTuple(list);
-    }
-  }
-
-  void UpdateAttrDilations() {
-    if (node_->attr().find("dilations") != node_->attr().end()) {
-      auto list = node_->mutable_attr()->at("dilations").mutable_list();
       UpdateTuple(list);
     }
   }

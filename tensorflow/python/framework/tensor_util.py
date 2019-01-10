@@ -935,10 +935,8 @@ def constant_value_as_shape(tensor):  # pylint: disable=invalid-name
 def is_tensor(x):  # pylint: disable=invalid-name
   """Check whether `x` is of tensor type.
 
-  Check whether an object is a tensor. This check is equivalent to calling
-  `isinstance(x, [tf.Tensor, tf.SparseTensor, tf.Variable])` and also checks
-  if all the component variables of a MirroredVariable or a TowerLocalVariable
-  are tensors.
+  Check whether an object is a tensor. Equivalent to
+  `isinstance(x, [tf.Tensor, tf.SparseTensor, tf.Variable])`.
 
   Args:
     x: A python object to check.
@@ -946,5 +944,4 @@ def is_tensor(x):  # pylint: disable=invalid-name
   Returns:
     `True` if `x` is a tensor, `False` if not.
   """
-  return (isinstance(x, ops._TensorLike) or ops.is_dense_tensor_like(x) or  # pylint: disable=protected-access
-          (hasattr(x, "is_tensor_like") and x.is_tensor_like))
+  return isinstance(x, ops._TensorLike) or ops.is_dense_tensor_like(x)  # pylint: disable=protected-access

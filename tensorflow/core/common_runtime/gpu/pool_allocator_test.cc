@@ -15,9 +15,8 @@ limitations under the License.
 
 #if GOOGLE_CUDA
 
-#include "tensorflow/core/common_runtime/pool_allocator.h"
+#include "tensorflow/core/common_runtime/gpu/pool_allocator.h"
 
-#include "tensorflow/core/common_runtime/gpu/cuda_host_allocator.h"
 #include "tensorflow/core/platform/stream_executor.h"
 #include "tensorflow/core/platform/test.h"
 
@@ -97,8 +96,7 @@ TEST(PoolAllocatorTest, Alignment) {
 
 TEST(PoolAllocatorTest, AutoResize) {
   PoolAllocator pool(2 /*pool_size_limit*/, true /*auto_resize*/,
-                     new BasicCPUAllocator(0 /*numa_node*/), new NoopRounder,
-                     "pool");
+                     new BasicCPUAllocator, new NoopRounder, "pool");
 
   // Alloc/dealloc 10 sizes just a few times, confirming pool size
   // stays at 2.

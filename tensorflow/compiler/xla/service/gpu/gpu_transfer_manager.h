@@ -21,7 +21,6 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/generic_transfer_manager.h"
 #include "tensorflow/compiler/xla/service/gpu/infeed_manager.h"
 #include "tensorflow/compiler/xla/service/transfer_manager.h"
-#include "tensorflow/compiler/xla/shape_tree.h"
 #include "tensorflow/compiler/xla/statusor.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/platform/macros.h"
@@ -29,36 +28,33 @@ limitations under the License.
 #include "tensorflow/core/platform/types.h"
 
 namespace xla {
-namespace gpu {
 
 // An implementation of the XLA GenericTransferManager that
 // handles GPU-specific infeed.
 class GpuTransferManager : public GenericTransferManager {
  public:
-  GpuTransferManager(se::Platform::Id id, unsigned pointer_size);
+  GpuTransferManager();
   ~GpuTransferManager() override {}
 
   Status TransferLiteralToInfeed(se::StreamExecutor* executor,
                                  const LiteralSlice& literal) override;
-  Status TransferLiteralFromOutfeed(se::StreamExecutor* executor,
-                                    const Shape& literal_shape,
-                                    Literal* literal) override;
+  Status TransferBufferToInfeed(se::StreamExecutor* executor, int64 size,
+                                const void* source) override;
 
  private:
   // Initiates the infeed data transfers. InfeedBuffer->Done() must be
   // called to clean up the memory allocated for InfeedBuffer.
-  StatusOr<InfeedBuffer> TransferBufferToInfeedInternal(
+  StatusOr<gpu::InfeedBuffer*> TransferBufferToInfeedInternal(
       se::StreamExecutor* executor, int64 size, const void* source);
 
   // Enqueues infeed data buffers with the infeed manager after their
   // transfer completes.
   Status EnqueueBuffersToInfeed(se::StreamExecutor* executor,
-                                ShapeTree<InfeedBuffer> buffers);
+                                std::vector<gpu::InfeedBuffer*> buffers);
 
   TF_DISALLOW_COPY_AND_ASSIGN(GpuTransferManager);
 };
 
-}  // namespace gpu
 }  // namespace xla
 
 #endif  // TENSORFLOW_COMPILER_XLA_SERVICE_GPU_TRANSFER_MANAGER_H_

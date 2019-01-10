@@ -32,8 +32,7 @@ class TestCollectiveExecutor : public CollectiveExecutor {
                     bool peer_is_local, const string& key, Device* to_device,
                     DeviceContext* to_device_ctx,
                     const AllocatorAttributes& to_alloc_attr, Tensor* to_tensor,
-                    const DeviceLocality& client_locality,
-                    int dev_to_dev_stream_index,
+                    const DeviceLocality& client_locality,  //???
                     const StatusCallback& done) override {
     done(errors::Internal("Unimplemented"));
   }

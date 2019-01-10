@@ -61,7 +61,7 @@ class DotOpEmitter {
       const HloInstruction& dot, const llvm_ir::IrArray& target_array,
       const llvm_ir::IrArray& lhs_array, const llvm_ir::IrArray& rhs_array,
       const llvm_ir::IrArray* addend_array,
-      llvm::Value* executable_run_options_value, llvm::IRBuilder<>* b,
+      llvm::Value* executable_run_options_value, llvm::IRBuilder<>* ir_builder,
       const HloModuleConfig& hlo_module_config,
       const TargetMachineFeatures& target_machine_features);
 
@@ -70,7 +70,8 @@ class DotOpEmitter {
                const llvm_ir::IrArray& lhs_array,
                const llvm_ir::IrArray& rhs_array,
                const llvm_ir::IrArray* addend_array,
-               llvm::Value* executable_run_options_value, llvm::IRBuilder<>* b,
+               llvm::Value* executable_run_options_value,
+               llvm::IRBuilder<>* ir_builder,
                const HloModuleConfig& hlo_module_config,
                const TargetMachineFeatures& target_machine_features);
 
@@ -142,17 +143,6 @@ class DotOpEmitter {
         .value_or(kDefaultTilingFactor);
   }
 
-  std::tuple<int64, int64, int64> GetGemmTileSize() const {
-    // Tuned for broadwell - Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz
-    //
-    // TODO(b/80093688): Tune for other architectures and centralize this
-    // information in one place.
-    const std::tuple<int64, int64, int64> kDefaultTileSize =
-        std::tuple<int64, int64, int64>(11, 9, 1);
-    return options::LlvmIrGemmTileSize(hlo_module_config_)
-        .value_or(kDefaultTileSize);
-  }
-
   // Returns true if we should use an experimental implementation of GEMM
   // (general matrix matrix multiplication) if possible.
   bool EnableExperimentalLlvmIrGemm() const {
@@ -170,7 +160,7 @@ class DotOpEmitter {
   const llvm_ir::IrArray& rhs_array_;
   const llvm_ir::IrArray* addend_array_;
   llvm::Value* executable_run_options_value_;
-  llvm::IRBuilder<>* b_;
+  llvm::IRBuilder<>* ir_builder_;
   const HloModuleConfig& hlo_module_config_;
   const TargetMachineFeatures& target_machine_features_;
 };

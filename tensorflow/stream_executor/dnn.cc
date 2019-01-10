@@ -117,8 +117,6 @@ string FilterLayoutString(FilterLayout layout) {
   switch (layout) {
     case FilterLayout::kOutputInputYX:
       return "OutputInputYX";
-    case FilterLayout::kOutputYXInput:
-      return "OutputYXInput";
     case FilterLayout::kOutputInputYX4:
       return "OutputInputYX4";
     case FilterLayout::kInputYXOutput:
@@ -141,10 +139,6 @@ string PadAlignmentString(PadAlignment alignment) {
       return "TensorFlow padding";
   }
   return "unknown pad alignment";
-}
-
-std::ostream& operator<<(std::ostream& str, dnn::PadAlignment alignment) {
-  return str << PadAlignmentString(alignment);
 }
 
 string ShortPoolingModeString(PoolingMode mode) {

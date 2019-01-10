@@ -23,7 +23,6 @@ import importlib
 import numpy as np
 
 from tensorflow.python.client import session
-from tensorflow.python.eager import backprop
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import test_util
 from tensorflow.python.ops import nn_ops
@@ -163,15 +162,6 @@ class ExponentialTest(test.TestCase):
                 sample_values[:, 1, i],
                 stats.expon(scale=1.0 / lam_v[i]).cdf)[0],
             0.01)
-
-  def testFullyReparameterized(self):
-    lam = constant_op.constant([0.1, 1.0])
-    with backprop.GradientTape() as tape:
-      tape.watch(lam)
-      exponential = exponential_lib.Exponential(rate=lam)
-      samples = exponential.sample(100)
-    grad_lam = tape.gradient(samples, lam)
-    self.assertIsNotNone(grad_lam)
 
   def testExponentialWithSoftplusRate(self):
     with self.test_session():

@@ -127,8 +127,12 @@ public final class OvicClassifierTest {
     try {
       testResult = classifier.classifyByteBuffer(testImage);
       fail();
-    } catch (IllegalArgumentException e) {
-      // Success.
+    } catch (RuntimeException e) {
+      assertThat(e)
+          .hasMessageThat()
+          .contains(
+              "Failed to get input dimensions. 0-th input should have 49152 bytes, "
+                  + "but found 150528 bytes.");
     }
   }
 

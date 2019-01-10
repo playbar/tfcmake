@@ -26,40 +26,27 @@ namespace toco {
 
 bool ResolveTensorFlowMatMul::Run(Model* model, std::size_t op_index) {
   auto matmul_it = model->operators.begin() + op_index;
-  if (matmul_it->get()->type != OperatorType::kMatMul) {
+  if (matmul_it->get()->type != OperatorType::kTensorFlowMatMul) {
     return false;
   }
   const auto* matmul_op =
       static_cast<const TensorFlowMatMulOperator*>(matmul_it->get());
 
-  // Handling transposition of the first input here isn't very simple because
-  // we need to know the actual shape in order to produce a proper
-  // TransposeOperator.  However, the second input is supposed to be 2D, so we
-  // can actually handle transposition of that matrix, which happens to be more
-  // common anyway.
-  CHECK(!matmul_op->transpose_a);
-
   // Reorder the axes on the second input. TensorFlow uses row-major ordering
   // on both inputs, however this is inefficient for the FullyConnected
   // operator. We'll transpose the second input to be in column-major order now
   // and let constant propagation optimize things (if possible).
-  string input_lhs = matmul_op->inputs[0];
-  string input_rhs = matmul_op->inputs[1];
-  if (!matmul_op->transpose_b) {
-    auto* transpose_op = new TransposeOperator;
-    transpose_op->inputs = {
-        matmul_op->inputs[1],
-        CreateInt32Array(model,
-                         AvailableArrayName(
-                             *model, matmul_op->inputs[1] + "/transpose/perm"),
-                         {1, 0})};
-    transpose_op->outputs = {
-        AvailableArrayName(*model, matmul_op->inputs[1] + "/transpose")};
-    model->GetOrCreateArray(transpose_op->outputs[0]);
-    model->operators.emplace(matmul_it, transpose_op);
-
-    input_rhs = transpose_op->outputs[0];
-  }
+  auto* transpose_op = new TransposeOperator;
+  transpose_op->inputs = {
+      matmul_op->inputs[1],
+      CreateInt32Array(
+          model,
+          AvailableArrayName(*model, matmul_op->inputs[1] + "/transpose/perm"),
+          {1, 0})};
+  transpose_op->outputs = {
+      AvailableArrayName(*model, matmul_op->inputs[1] + "/transpose")};
+  model->GetOrCreateArray(transpose_op->outputs[0]);
+  model->operators.emplace(matmul_it, transpose_op);
 
   // Refresh iterator.
   matmul_it = model->operators.begin();
@@ -69,6 +56,9 @@ bool ResolveTensorFlowMatMul::Run(Model* model, std::size_t op_index) {
     }
   }
   DCHECK_EQ(matmul_it->get(), matmul_op);
+
+  string input_lhs = matmul_op->inputs[0];
+  string input_rhs = transpose_op->outputs[0];
 
   // Construct the new FullyConnectedOperator.
   auto* fc_op = new FullyConnectedOperator;
@@ -107,7 +97,7 @@ bool ResolveTensorFlowMatMul::Run(Model* model, std::size_t op_index) {
   // MatMul op as a FullyConnected. However, TensorFlow skips the Reshape ops if
   // the input doesn't need reshaping, so we can't just match (Reshape, MatMul)
   // pairs.
-  if (previous_op && previous_op->type == OperatorType::kReshape) {
+  if (previous_op && previous_op->type == OperatorType::kTensorFlowReshape) {
     AddMessageF("Combining %s and %s into %s", LogName(*previous_op),
                 LogName(*matmul_op), LogName(*fc_op));
     const auto& previous_op_output = previous_op->outputs[0];

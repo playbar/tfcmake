@@ -14,10 +14,9 @@ limitations under the License.
 ==============================================================================*/
 
 #include "tensorflow/compiler/xla/service/llvm_compiler.h"
-#include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/compiler/xla/service/backend.h"
 #include "tensorflow/compiler/xla/service/cpu/cpu_compiler.h"
-#include "tensorflow/compiler/xla/service/gpu/nvptx_compiler.h"
+#include "tensorflow/compiler/xla/service/gpu/gpu_compiler.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/service/platform_util.h"
 #include "tensorflow/compiler/xla/test_helpers.h"
@@ -65,7 +64,7 @@ class LLVMCompilerTest : public ::testing::Test {
     // Create HLO module, and run the compiler.
     auto builder = HloComputation::Builder(TestName());
     builder.AddInstruction(
-        HloInstruction::CreateConstant(LiteralUtil::CreateR0<float>(42.0)));
+        HloInstruction::CreateConstant(Literal::CreateR0<float>(42.0)));
 
     auto hlo_module = CreateNewModule();
     hlo_module->AddEntryComputation(builder.Build());
@@ -87,7 +86,7 @@ class LLVMCompilerTest : public ::testing::Test {
   void TestMultiModuleCompilation(LLVMCompiler *compiler) {
     HloComputation::Builder builder(TestName());
     builder.AddInstruction(
-        HloInstruction::CreateConstant(LiteralUtil::CreateR0<float>(42.0)));
+        HloInstruction::CreateConstant(Literal::CreateR0<float>(42.0)));
 
     std::unique_ptr<HloModule> hlo_module = CreateNewModule();
     hlo_module->AddEntryComputation(builder.Build());
@@ -125,7 +124,8 @@ class LLVMCompilerTest : public ::testing::Test {
   static std::unique_ptr<HloModule> CreateNewModule() {
     HloModuleConfig config;
     config.set_debug_options(legacy_flags::GetDebugOptionsFromFlags());
-    return MakeUnique<HloModule>(TestName(), config);
+    return MakeUnique<HloModule>(TestName(), VersionedComputationHandle(),
+                                 config);
   }
 };
 
@@ -145,7 +145,7 @@ TEST_F(CpuCompilerTest, HooksTest) {
 }
 
 TEST_F(GpuCompilerTest, HooksTest) {
-  gpu::NVPTXCompiler compiler;
+  gpu::GpuCompiler compiler;
   TestCompilerHooks(&compiler);
 }
 
@@ -155,7 +155,7 @@ TEST_F(CpuCompilerTest, MultiModuleCompilation) {
 }
 
 TEST_F(GpuCompilerTest, MultModuleCompilation) {
-  gpu::NVPTXCompiler compiler;
+  gpu::GpuCompiler compiler;
   TestMultiModuleCompilation(&compiler);
 }
 }  // namespace

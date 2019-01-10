@@ -44,8 +44,7 @@ class ReconstructNonDebugGraphTest(test_util.TensorFlowTestCase):
 
   def _no_rewrite_session_config(self):
     rewriter_config = rewriter_config_pb2.RewriterConfig(
-        dependency_optimization=rewriter_config_pb2.RewriterConfig.OFF,
-        min_graph_nodes=-1)
+        dependency_optimization=rewriter_config_pb2.RewriterConfig.OFF)
     graph_options = config_pb2.GraphOptions(rewrite_options=rewriter_config)
     return config_pb2.ConfigProto(graph_options=graph_options)
 

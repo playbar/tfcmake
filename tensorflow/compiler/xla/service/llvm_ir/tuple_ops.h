@@ -61,13 +61,13 @@ namespace llvm_ir {
 //   output[i] = pred ? tuple_on_true[i] : tuple_on_false[i]
 void EmitTupleSelect(const IrArray& select, const IrArray& pred,
                      llvm::Value* on_true, llvm::Value* on_false,
-                     llvm::IRBuilder<>* b, llvm::Module* module);
+                     llvm::IRBuilder<>* ir_builder, llvm::Module* module);
 
 // A tuple is an array of pointers, one for each operand. Each pointer points to
 // the output buffer of its corresponding operand.
 void EmitTuple(const IrArray& tuple,
                tensorflow::gtl::ArraySlice<llvm::Value*> operands,
-               llvm::IRBuilder<>* b, llvm::Module* module);
+               llvm::IRBuilder<>* ir_builder, llvm::Module* module);
 
 // A tuple is an array of pointers, one for each operand. Each pointer points to
 // the output buffer of its corresponding operand. A GetTupleElement instruction
@@ -75,7 +75,8 @@ void EmitTuple(const IrArray& tuple,
 // Returns an llvm value representing a pointer to the tuple element buffer.
 llvm::Value* EmitGetTupleElement(const Shape& target_shape, int64 index,
                                  int alignment, llvm::Value* operand,
-                                 llvm::IRBuilder<>* b, llvm::Module* module);
+                                 llvm::IRBuilder<>* ir_builder,
+                                 llvm::Module* module);
 }  // namespace llvm_ir
 }  // namespace xla
 

@@ -24,8 +24,7 @@ namespace xla {
 StatusOr<std::vector<std::unique_ptr<AotCompilationResult>>>
 CompileOnlyClient::CompileAheadOfTime(
     const tensorflow::gtl::ArraySlice<AotXlaComputationInstance> computations,
-    const AotCompilationOptions& options,
-    std::unique_ptr<AotCompilationMetadata>* metadata) {
+    const AotCompilationOptions& options) {
   std::vector<CompileOnlyService::AotXlaComputationInstance> service_instances;
   service_instances.reserve(computations.size());
   for (const AotXlaComputationInstance& instance : computations) {
@@ -37,8 +36,7 @@ CompileOnlyClient::CompileAheadOfTime(
     service_instance.argument_layouts = instance.argument_layouts;
     service_instance.result_layout = instance.result_layout;
   }
-  return compiler_service_->CompileAheadOfTime(service_instances, options,
-                                               metadata);
+  return compiler_service_->CompileAheadOfTime(service_instances, options);
 }
 
 int64 CompileOnlyClient::PointerSizeForTriple(tensorflow::StringPiece triple) {

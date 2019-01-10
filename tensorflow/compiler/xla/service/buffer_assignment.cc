@@ -135,7 +135,6 @@ Status GatherComputationsByAllocationType(
             worklist.push_back(std::make_pair(subcomputation,
                                               false));  // Not thread local.
             break;
-          case HloOpcode::kCrossReplicaSum:
           case HloOpcode::kMap:
           case HloOpcode::kReduce:
           case HloOpcode::kReduceWindow:
@@ -270,7 +269,7 @@ BufferAllocationProto BufferAllocation::ToProto() const {
   proto.set_index(index_);
   proto.set_size(size_);
   proto.set_is_thread_local(is_thread_local_);
-  proto.set_is_tuple(is_tuple_);
+  proto.set_is_reusable(is_reusable_);
   proto.set_color(color_.value());
   if (is_entry_computation_parameter_) {
     proto.set_is_entry_computation_parameter(true);
@@ -279,7 +278,6 @@ BufferAllocationProto BufferAllocation::ToProto() const {
     }
     proto.set_parameter_number(parameter_number_);
   }
-  proto.set_is_constant(is_constant_);
   proto.set_maybe_live_out(maybe_live_out_);
   for (const auto& buffer_offset_size : assigned_buffers_) {
     BufferAllocationProto::Assigned* proto_assigned = proto.add_assigned();
@@ -304,9 +302,6 @@ string BufferAllocation::ToString() const {
   if (is_entry_computation_parameter()) {
     StrAppend(&output, ", parameter ", parameter_number(), " at ShapeIndex ",
               param_shape_index().ToString());
-  }
-  if (is_constant()) {
-    StrAppend(&output, ", constant");
   }
   if (is_thread_local()) {
     StrAppend(&output, ", thread-local");
@@ -495,16 +490,20 @@ BufferAssignment::GetUniqueTopLevelOutputSlice() const {
 }
 
 BufferAllocation* BufferAssignment::NewEmptyAllocation(
-    int64 size, LogicalBuffer::Color color) {
+    int64 size, bool is_thread_local, bool is_reusable,
+    LogicalBuffer::Color color) {
   BufferAllocation::Index index = allocations_.size();
-  allocations_.emplace_back(index, size, color);
+  allocations_.emplace_back(index, size, is_thread_local, is_reusable, color);
   BufferAllocation* allocation = &allocations_.back();
   return allocation;
 }
 
 BufferAllocation* BufferAssignment::NewAllocation(const LogicalBuffer& buffer,
-                                                  int64 size) {
-  BufferAllocation* allocation = NewEmptyAllocation(size, buffer.color());
+                                                  int64 size,
+                                                  bool is_thread_local,
+                                                  bool is_reusable) {
+  BufferAllocation* allocation =
+      NewEmptyAllocation(size, is_thread_local, is_reusable, buffer.color());
   AddAssignment(allocation, buffer, /*offset=*/0, size);
   allocation->peak_buffers_.push_back(&buffer);
   return allocation;
@@ -517,8 +516,7 @@ void BufferAssignment::AddAssignment(BufferAllocation* allocation,
   CHECK_EQ(0, allocation_index_for_buffer_.count(&buffer))
       << "LogicalBuffer " << buffer << " already has an allocation.";
   CHECK(allocation->is_reusable() || allocation->assigned_buffers().empty())
-      << "Non-reusable allocation already assigned a buffer: "
-      << allocation->ToString();
+      << "Non-reusable allocation already assigned a buffer";
 
   TF_CHECK_OK(points_to_analysis().VerifyBuffer(buffer));
 
@@ -610,10 +608,6 @@ Status BufferAssignment::ComputeSummaryStats() {
       stats_.parameter_allocation_count++;
       stats_.parameter_allocation_bytes += allocation.size();
     }
-    if (allocation.is_constant()) {
-      stats_.constant_allocation_count++;
-      stats_.constant_allocation_bytes += allocation.size();
-    }
     if (allocation.maybe_live_out()) {
       stats_.maybe_live_out_allocation_count++;
       stats_.maybe_live_out_allocation_bytes += allocation.size();
@@ -638,7 +632,7 @@ Status BufferAssignment::ComputeSummaryStats() {
   if (module_sequence.size() == module_->computation_count()) {
     TF_ASSIGN_OR_RETURN(
         const int64 min_size,
-        HeapSimulator::MinimumMemoryForModule(module_sequence, buffer_size_));
+        MinimumMemoryForSequence(module_sequence, buffer_size_));
     stats_.total_fragmentation_bytes = stats_.total_allocation_bytes - min_size;
   }
 
@@ -650,8 +644,6 @@ string BufferAssignment::Stats::ToString() const {
   Appendf(&s, "BufferAssignment stats:\n");
   Appendf(&s, "             parameter allocation: %10s\n",
           HumanReadableNumBytes(parameter_allocation_bytes).c_str());
-  Appendf(&s, "              constant allocation: %10s\n",
-          HumanReadableNumBytes(constant_allocation_bytes).c_str());
   Appendf(&s, "        maybe_live_out allocation: %10s\n",
           HumanReadableNumBytes(maybe_live_out_allocation_bytes).c_str());
   Appendf(&s, "     preallocated temp allocation: %10s\n",
@@ -729,10 +721,8 @@ StatusOr<std::unique_ptr<BufferAssignment>> BufferAssigner::Run(
     const HloModule* module, std::unique_ptr<HloOrdering> hlo_ordering,
     LogicalBuffer::SizeFunction buffer_size,
     LogicalBuffer::AlignmentFunction color_alignment,
-    bool allow_input_output_aliasing, bool allocate_buffers_for_constants,
-    BufferLiveness::Colorer colorer) {
-  BufferAssigner assigner(allow_input_output_aliasing,
-                          allocate_buffers_for_constants, std::move(colorer));
+    bool allow_input_output_aliasing, BufferLiveness::Colorer colorer) {
+  BufferAssigner assigner(allow_input_output_aliasing, std::move(colorer));
   return assigner.CreateAssignment(module, std::move(hlo_ordering),
                                    std::move(buffer_size),
                                    std::move(color_alignment));
@@ -760,8 +750,8 @@ bool BufferAssigner::MaybeAssignBuffer(BufferAllocation* allocation,
     return false;
   }
 
-  if (allocation->is_readonly()) {
-    VLOG(4) << "Can't assign: allocation is readonly";
+  if (allocation->is_entry_computation_parameter()) {
+    VLOG(4) << "Can't assign: allocation holds parameter";
     return false;
   }
 
@@ -914,18 +904,14 @@ Status BufferAssigner::AssignBuffersForComputation(
     TF_RET_CHECK(!assignment->HasAllocation(*buffer));
 
     const HloInstruction* instruction = buffer->instruction();
-    const int64 buffer_size = assignment->buffer_size_(*buffer);
-
     if (instruction->opcode() == HloOpcode::kConstant) {
-      if (allocate_buffers_for_constants_) {
-        BufferAllocation* allocation =
-            assignment->NewAllocation(*buffer, buffer_size);
-        allocation->set_constant(true);
-        VLOG(3) << "New allocation #" << allocation->index() << " for constant "
-                << *buffer;
-      }
+      // No BufferAllocations for constants.
+      // TODO(b/32248867): For consistency, constants should get allocations.
+      VLOG(3) << "Skipping constant: " << *buffer;
       continue;
     }
+
+    const int64 buffer_size = assignment->buffer_size_(*buffer);
 
     const bool is_entry_parameter =
         instruction->opcode() == HloOpcode::kParameter &&
@@ -936,7 +922,9 @@ Status BufferAssigner::AssignBuffersForComputation(
       // computations do not need special allocations because they live inside
       // callers.
       BufferAllocation* allocation =
-          assignment->NewAllocation(*buffer, buffer_size);
+          assignment->NewAllocation(*buffer, buffer_size,
+                                    /*is_thread_local=*/false,
+                                    /*is_reusable=*/false);
       allocation->set_entry_computation_parameter(
           instruction->parameter_number(), buffer->index());
       VLOG(3) << "New allocation #" << allocation->index()
@@ -945,18 +933,20 @@ Status BufferAssigner::AssignBuffersForComputation(
     }
 
     if (is_thread_local) {
-      BufferAllocation* allocation =
-          assignment->NewAllocation(*buffer, buffer_size);
-      allocation->set_is_thread_local(true);
+      // We do not reuse thread-local buffers for now, because they are
+      // dynamically allocated and their lifetimes are hard to compute.
+      BufferAllocation* allocation = assignment->NewAllocation(
+          *buffer, buffer_size, is_thread_local, /*is_reusable=*/false);
       VLOG(3) << "New allocation #" << allocation->index()
               << " for thread-local: " << *buffer;
       continue;
     }
 
     if (ShapeUtil::IsTuple(buffer->shape())) {
-      BufferAllocation* allocation =
-          assignment->NewAllocation(*buffer, buffer_size);
-      allocation->set_is_tuple(true);
+      // TODO(b/34669761): Don't reuse tuple buffers because the GPU backend
+      // assumes longer buffer liveness than indicated by the analysis.
+      BufferAllocation* allocation = assignment->NewAllocation(
+          *buffer, buffer_size, is_thread_local, /*is_reusable=*/false);
       VLOG(3) << "New allocation #" << allocation->index()
               << " for tuple-shaped buffer: " << *buffer;
       continue;
@@ -1039,8 +1029,8 @@ Status BufferAssigner::AssignBuffersForComputation(
     }
 
     if (!assignment->HasAllocation(*buffer)) {
-      BufferAllocation* allocation =
-          assignment->NewAllocation(*buffer, buffer_size);
+      BufferAllocation* allocation = assignment->NewAllocation(
+          *buffer, buffer_size, is_thread_local, /*is_reusable=*/true);
       allocation_indices.push_back(allocation->index());
       VLOG(3) << "New allocation #" << allocation->index()
               << " for: " << *buffer;
@@ -1094,7 +1084,6 @@ Status BufferAssigner::AssignBuffersWithSequentialOrdering(
       VLOG(2) << "Simulating heap for color " << color;
       int64 alignment = assignment->color_alignment_(color);
       HeapSimulator::Options options;
-      options.alloc_constants = allocate_buffers_for_constants_;
       BufferValueFlatSet buffer_value_set =
           ToBufferValueFlatSet(single_colored_set.second);
       options.buffers_to_assign = &buffer_value_set;
@@ -1237,8 +1226,8 @@ void BufferAssigner::AssignBuffersFromHeapSimulator(
         result.fragmentation_size;
   }
 
-  BufferAllocation* allocation =
-      assignment->NewEmptyAllocation(result.heap_size, color);
+  BufferAllocation* allocation = assignment->NewEmptyAllocation(
+      result.heap_size, /*is_thread_local=*/false, /*is_reusable=*/true, color);
   for (const auto& buffer_chunk : result.chunk_map) {
     // TODO(lauj) Remove this down_cast after downstream users of
     // BufferAllocation::assigned_buffers() are updated to use BufferValue.
@@ -1454,23 +1443,8 @@ void BufferAssigner::BuildColocatedBufferSets(
             });
       } else if (opcode == HloOpcode::kCall) {
         const HloInstruction* call_hlo = instruction;
-        const HloComputation* callee = call_hlo->to_apply();
-        const HloInstruction* root_hlo = callee->root_instruction();
-        for (int64 i = 0; i < call_hlo->operand_count(); i++) {
-          const HloInstruction* call_param = callee->parameter_instruction(i);
-          const HloInstruction* call_operand = call_hlo->operand(i);
-          ShapeUtil::ForEachSubshape(
-              call_operand->shape(),
-              [&](const Shape& /*subshape*/, const ShapeIndex& index) {
-                std::vector<const LogicalBuffer*> colocated_set;
-                AddBufferToColocatedSet(call_param, index, points_to_analysis,
-                                        &colocated_set);
-                AddBufferToColocatedSet(call_operand, index, points_to_analysis,
-                                        &colocated_set);
-                AddSetToColocatedBufferSets(colocated_set,
-                                            colocated_buffer_sets);
-              });
-        }
+        const HloInstruction* root_hlo =
+            call_hlo->to_apply()->root_instruction();
         ShapeUtil::ForEachSubshape(
             call_hlo->shape(),
             [this, call_hlo, root_hlo, &points_to_analysis,
@@ -1576,7 +1550,6 @@ void BufferAssigner::AssignColocatedBufferSets(
     // param in 'colocated_buffer_set'.
     int64 entry_parameter_number = -1;
     const ShapeIndex* entry_parameter_shape_idx = nullptr;
-    bool is_constant = false;
     for (const LogicalBuffer* buffer : colocated_buffer_set) {
       const HloInstruction* instruction = buffer->instruction();
       const HloComputation* computation = instruction->parent();
@@ -1584,13 +1557,9 @@ void BufferAssigner::AssignColocatedBufferSets(
           computation == computation->parent()->entry_computation()) {
         entry_parameter_number = instruction->parameter_number();
         entry_parameter_shape_idx = &buffer->index();
-      } else if (instruction->opcode() == HloOpcode::kConstant) {
-        is_constant = true;
+        break;
       }
     }
-
-    CHECK(!is_constant || entry_parameter_number == -1)
-        << "Copy insertion should have inserted copies to prevent this.";
 
     for (const LogicalBuffer* buffer : colocated_buffer_set) {
       const int64 buffer_size = assignment->buffer_size_(*buffer);
@@ -1599,13 +1568,17 @@ void BufferAssigner::AssignColocatedBufferSets(
         // allocations for each colocated buffer set. When liveness has
         // module-level scope, we can allow buffers to be shared across
         // computations (in some cases).
-        allocation = assignment->NewAllocation(*buffer, buffer_size);
+        allocation = assignment->NewAllocation(*buffer, buffer_size,
+                                               /*is_thread_local=*/false,
+                                               /*is_reusable=*/true);
         if (entry_parameter_number >= 0) {
+          // This colocated buffer set contains an entry parameter and other
+          // logical buffers which use the parameter as read-only in a while
+          // body computation (which updates in place).
+          // Set 'entry_computation_parameter' to indicate that it contains
+          // an entry parameter, and to prevent reuse in MaybeAssignBuffer.
           allocation->set_entry_computation_parameter(
               entry_parameter_number, *entry_parameter_shape_idx);
-        }
-        if (is_constant) {
-          allocation->set_constant(true);
         }
         colocated_allocations->insert(allocation->index());
       } else {

@@ -56,7 +56,6 @@ tf_py_test(
     srcs = ["input_data_test.py"],
     additional_deps = [
         ":input_data",
-        ":models",
         "//tensorflow/python:client_testlib",
     ],
 )

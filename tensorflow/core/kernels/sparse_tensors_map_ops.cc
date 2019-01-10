@@ -93,9 +93,8 @@ class SparseTensorsMap : public ResourceBase {
         const Tensor* ix = sp_iter->second.indices.AccessTensor(ctx);
         const Tensor* values = sp_iter->second.values.AccessTensor(ctx);
         const auto& shape = sp_iter->second.shape;
-        SparseTensor tensor;
-        TF_RETURN_IF_ERROR(SparseTensor::Create(*ix, *values, shape, &tensor));
-        sparse_tensors->push_back(std::move(tensor));
+        sparse_tensors->emplace_back(*ix, *values, shape);
+
         sp_tensors_.erase(sp_iter);
       }
     }
@@ -196,9 +195,7 @@ class AddSparseToTensorsMapOp : public SparseTensorAccessingOp {
                    TensorShapeUtils::MakeShape(input_shape->vec<int64>().data(),
                                                input_shape->NumElements(),
                                                &input_shape_object));
-    SparseTensor st;
-    OP_REQUIRES_OK(context, SparseTensor::Create(*input_indices, *input_values,
-                                                 input_shape_object, &st));
+    SparseTensor st(*input_indices, *input_values, input_shape_object);
     int64 handle;
     OP_REQUIRES_OK(context, map->AddSparseTensor(context, st, &handle));
 
@@ -256,10 +253,8 @@ class AddManySparseToTensorsMapOp : public SparseTensorAccessingOp {
     TensorShape tensor_input_shape(input_shape->vec<int64>());
     gtl::InlinedVector<int64, 8> std_order(rank);
     std::iota(std_order.begin(), std_order.end(), 0);
-    SparseTensor input_st;
-    OP_REQUIRES_OK(context, SparseTensor::Create(*input_indices, *input_values,
-                                                 tensor_input_shape, std_order,
-                                                 &input_st));
+    SparseTensor input_st(*input_indices, *input_values, tensor_input_shape,
+                          std_order);
 
     auto input_shape_t = input_shape->vec<int64>();
     const int64 N = input_shape_t(0);
@@ -305,10 +300,7 @@ class AddManySparseToTensorsMapOp : public SparseTensorAccessingOp {
         output_values_t(i) = values(i);
       }
 
-      SparseTensor st_i;
-      OP_REQUIRES_OK(context,
-                     SparseTensor::Create(output_indices, output_values,
-                                          output_shape, &st_i));
+      SparseTensor st_i(output_indices, output_values, output_shape);
       int64 handle;
       OP_REQUIRES_OK(context, map->AddSparseTensor(context, st_i, &handle));
       sparse_handles_t(b) = handle;
@@ -319,9 +311,7 @@ class AddManySparseToTensorsMapOp : public SparseTensorAccessingOp {
     if (visited.size() < N) {
       Tensor empty_indices(DT_INT64, {0, rank - 1});
       Tensor empty_values(DataTypeToEnum<T>::value, {0});
-      SparseTensor empty_st;
-      OP_REQUIRES_OK(context, SparseTensor::Create(empty_indices, empty_values,
-                                                   output_shape, &empty_st));
+      SparseTensor empty_st(empty_indices, empty_values, output_shape);
 
       for (int64 b = 0; b < N; ++b) {
         // We skipped this batch entry.
@@ -476,15 +466,13 @@ class TakeManySparseFromTensorsMapOp : public SparseTensorAccessingOp {
     std::vector<SparseTensor> tensors_to_concat;
     tensors_to_concat.reserve(N);
     for (int i = 0; i < N; ++i) {
-      SparseTensor tensor;
-      OP_REQUIRES_OK(context,
-                     SparseTensor::Create(std::move(indices_to_concat[i]),
-                                          std::move(values_to_concat[i]),
-                                          preconcat_shape, std_order, &tensor));
-      tensors_to_concat.push_back(std::move(tensor));
+      tensors_to_concat.emplace_back(std::move(indices_to_concat[i]),
+                                     std::move(values_to_concat[i]),
+                                     preconcat_shape, std_order);
     }
 
-    auto output = SparseTensor::Concat<T>(tensors_to_concat);
+    SparseTensor output(SparseTensor::Concat<T>(tensors_to_concat));
+
     Tensor final_output_shape(DT_INT64, TensorShape({output.dims()}));
 
     std::copy_n(output.shape().data(), output.dims(),

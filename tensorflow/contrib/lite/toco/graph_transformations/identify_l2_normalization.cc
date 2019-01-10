@@ -44,9 +44,10 @@ bool IdentifyL2Normalization::Run(Model* model, std::size_t op_index) {
   const auto* div_or_mul_op = div_it->get();
   OperatorType expected_op_type_producing_div_or_mul_input;
   if (div_or_mul_op->type == OperatorType::kDiv) {
-    expected_op_type_producing_div_or_mul_input = OperatorType::kSqrt;
+    expected_op_type_producing_div_or_mul_input = OperatorType::kTensorFlowSqrt;
   } else if (div_or_mul_op->type == OperatorType::kMul) {
-    expected_op_type_producing_div_or_mul_input = OperatorType::kRsqrt;
+    expected_op_type_producing_div_or_mul_input =
+        OperatorType::kTensorFlowRsqrt;
   } else {
     return false;
   }
@@ -74,7 +75,8 @@ bool IdentifyL2Normalization::Run(Model* model, std::size_t op_index) {
   Operator* add_op = nullptr;
   Operator* op_producing_add_input = nullptr;
   if (op_producing_sqrt_or_rsqrt_input->type == OperatorType::kAdd ||
-      op_producing_sqrt_or_rsqrt_input->type == OperatorType::kMaximum) {
+      op_producing_sqrt_or_rsqrt_input->type ==
+          OperatorType::kTensorFlowMaximum) {
     add_op = op_producing_sqrt_or_rsqrt_input;
     bool add_can_be_removed = false;
     CHECK_EQ(op_producing_sqrt_or_rsqrt_input->inputs.size(), 2);
@@ -111,7 +113,7 @@ bool IdentifyL2Normalization::Run(Model* model, std::size_t op_index) {
 
   Operator* sum_op =
       add_op ? op_producing_add_input : op_producing_sqrt_or_rsqrt_input;
-  if (sum_op->type != OperatorType::kSum) {
+  if (sum_op->type != OperatorType::kTensorFlowSum) {
     AddMessageF(
         "Giving up trying to identify L2Normalization subgraph: "
         "expected Sum op, got %s",
@@ -120,7 +122,7 @@ bool IdentifyL2Normalization::Run(Model* model, std::size_t op_index) {
   }
 
   Operator* square_op = GetOpWithOutput(*model, sum_op->inputs[0]);
-  if (square_op->type != OperatorType::kSquare) {
+  if (square_op->type != OperatorType::kTensorFlowSquare) {
     AddMessageF(
         "Giving up trying to identify L2Normalization subgraph: "
         "expected Square op, got %s",

@@ -943,7 +943,6 @@ class WALSModel(object):
               row_weights_slice,
               new_sp_input.indices,
               new_sp_input.values,
-              [],
               num_rows,
               transpose_input,
               name="wals_compute_partial_lhs_rhs"))

@@ -31,7 +31,6 @@ from tensorflow.python.framework import dtypes as dtypes_lib
 from tensorflow.python.framework import errors_impl
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
-from tensorflow.python.framework import test_util
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import data_flow_ops
@@ -126,21 +125,12 @@ class FIFOQueueTest(test.TestCase):
       q.enqueue_many([[1, 2, 3, 4], [[1, 1], [2, 2], [3, 3], [4, 4]]]).run()
       self.assertEqual(4, q.size().eval())
 
-  @test_util.run_in_graph_and_eager_modes
   def testMultipleDequeues(self):
-    q = data_flow_ops.FIFOQueue(10, [dtypes_lib.int32], shapes=[()])
-    self.evaluate(q.enqueue_many([[1, 2, 3]]))
-    a, b, c = self.evaluate([q.dequeue(), q.dequeue(), q.dequeue()])
-    self.assertAllEqual(set([1, 2, 3]), set([a, b, c]))
-
-  @test_util.run_in_graph_and_eager_modes
-  def testQueuesDontShare(self):
-    q = data_flow_ops.FIFOQueue(10, [dtypes_lib.int32], shapes=[()])
-    self.evaluate(q.enqueue(1))
-    q2 = data_flow_ops.FIFOQueue(10, [dtypes_lib.int32], shapes=[()])
-    self.evaluate(q2.enqueue(2))
-    self.assertAllEqual(self.evaluate(q2.dequeue()), 2)
-    self.assertAllEqual(self.evaluate(q.dequeue()), 1)
+    with self.test_session() as session:
+      q = data_flow_ops.FIFOQueue(10, [dtypes_lib.int32], shapes=[()])
+      q.enqueue_many([[1, 2, 3]]).run()
+      a, b, c = session.run([q.dequeue(), q.dequeue(), q.dequeue()])
+      self.assertAllEqual(set([1, 2, 3]), set([a, b, c]))
 
   def testEnqueueDictWithoutNames(self):
     with self.test_session():

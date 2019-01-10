@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""This module implements operators that AutoGraph overloads.
+"""This module implements operators that we overload.
 
 Note that "operator" is used loosely here, and includes control structures like
 conditionals and loops, implemented in functional form, using for example

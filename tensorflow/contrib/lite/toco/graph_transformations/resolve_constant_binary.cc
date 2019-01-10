@@ -145,17 +145,17 @@ void EvaluateBinaryOperatorOnConstantInputs(Model* model,
       outval = floor(val0 / val1);
     } else if (binary_op->type == OperatorType::kFloorMod) {
       outval = val0 - (floor(val0 / val1) * val1);
-    } else if (binary_op->type == OperatorType::kMinimum) {
+    } else if (binary_op->type == OperatorType::kTensorFlowMinimum) {
       outval = std::min(val0, val1);
-    } else if (binary_op->type == OperatorType::kMaximum) {
+    } else if (binary_op->type == OperatorType::kTensorFlowMaximum) {
       outval = std::max(val0, val1);
-    } else if (binary_op->type == OperatorType::kLess) {
+    } else if (binary_op->type == OperatorType::kTensorFlowLess) {
       outval = val0 < val1;
-    } else if (binary_op->type == OperatorType::kLessEqual) {
+    } else if (binary_op->type == OperatorType::kTensorFlowLessEqual) {
       outval = val0 <= val1;
-    } else if (binary_op->type == OperatorType::kGreater) {
+    } else if (binary_op->type == OperatorType::kTensorFlowGreater) {
       outval = val0 > val1;
-    } else if (binary_op->type == OperatorType::kGreaterEqual) {
+    } else if (binary_op->type == OperatorType::kTensorFlowGreaterEqual) {
       outval = val0 >= val1;
     } else {
       LOG(FATAL) << "should not get here";
@@ -198,12 +198,12 @@ bool ResolveConstantBinaryOperator::Run(Model* model, std::size_t op_index) {
       binary_op->type != OperatorType::kDiv &&
       binary_op->type != OperatorType::kFloorDiv &&
       binary_op->type != OperatorType::kFloorMod &&
-      binary_op->type != OperatorType::kMinimum &&
-      binary_op->type != OperatorType::kMaximum &&
-      binary_op->type != OperatorType::kLess &&
-      binary_op->type != OperatorType::kLessEqual &&
-      binary_op->type != OperatorType::kGreater &&
-      binary_op->type != OperatorType::kGreaterEqual) {
+      binary_op->type != OperatorType::kTensorFlowMinimum &&
+      binary_op->type != OperatorType::kTensorFlowMaximum &&
+      binary_op->type != OperatorType::kTensorFlowLess &&
+      binary_op->type != OperatorType::kTensorFlowLessEqual &&
+      binary_op->type != OperatorType::kTensorFlowGreater &&
+      binary_op->type != OperatorType::kTensorFlowGreaterEqual) {
     return false;
   }
   CHECK_EQ(binary_op->inputs.size(), 2);

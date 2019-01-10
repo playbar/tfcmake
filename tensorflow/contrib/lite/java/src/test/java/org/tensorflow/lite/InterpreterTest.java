@@ -165,24 +165,6 @@ public final class InterpreterTest {
   }
 
   @Test
-  public void testRunWithByteBufferOutput() {
-    float[] oneD = {1.23f, 6.54f, 7.81f};
-    float[][] twoD = {oneD, oneD, oneD, oneD, oneD, oneD, oneD, oneD};
-    float[][][] threeD = {twoD, twoD, twoD, twoD, twoD, twoD, twoD, twoD};
-    float[][][][] fourD = {threeD, threeD};
-    ByteBuffer parsedOutput =
-        ByteBuffer.allocateDirect(2 * 8 * 8 * 3 * 4).order(ByteOrder.nativeOrder());
-    try (Interpreter interpreter = new Interpreter(MODEL_FILE)) {
-      interpreter.run(fourD, parsedOutput);
-    }
-    float[] outputOneD = {
-      parsedOutput.getFloat(0), parsedOutput.getFloat(4), parsedOutput.getFloat(8)
-    };
-    float[] expected = {3.69f, 19.62f, 23.43f};
-    assertThat(outputOneD).usingTolerance(0.1f).containsExactly(expected).inOrder();
-  }
-
-  @Test
   public void testMobilenetRun() {
     // Create a gray image.
     float[][][][] img = new float[1][224][224][3];
@@ -221,9 +203,7 @@ public final class InterpreterTest {
       assertThat(e)
           .hasMessageThat()
           .contains(
-              "Cannot convert between a TensorFlowLite tensor with type "
-                  + "FLOAT32 and a Java object of type [[[[I (which is compatible with the"
-                  + " TensorFlowLite type INT32)");
+              "DataType (2) of input data does not match with the DataType (1) of model inputs.");
     }
     interpreter.close();
   }
@@ -243,8 +223,8 @@ public final class InterpreterTest {
       assertThat(e)
           .hasMessageThat()
           .contains(
-              "Cannot convert between a TensorFlowLite tensor with type "
-                  + "FLOAT32 and a Java object of type [[[[I (which is compatible with the"
+              "Cannot convert an TensorFlowLite tensor with type "
+                  + "FLOAT32 to a Java object of type [[[[I (which is compatible with the"
                   + " TensorFlowLite type INT32)");
     }
     interpreter.close();
@@ -330,12 +310,5 @@ public final class InterpreterTest {
     assertThat(outputOneD).usingTolerance(0.1f).containsExactly(expected).inOrder();
     interpreter.close();
     fileChannel.close();
-  }
-
-  @Test
-  public void testRedundantClose() throws Exception {
-    Interpreter interpreter = new Interpreter(MODEL_FILE);
-    interpreter.close();
-    interpreter.close();
   }
 }

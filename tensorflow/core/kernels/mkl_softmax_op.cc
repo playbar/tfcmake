@@ -25,6 +25,8 @@ limitations under the License.
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/util/tensor_format.h"
 
+#include "mkldnn.h"
+#include "mkldnn_types.h"
 #include "tensorflow/core/util/mkl_util.h"
 
 #include "mkldnn.hpp"

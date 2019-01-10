@@ -24,25 +24,8 @@ extern "C" {
 #endif  // __cplusplus
 
 /*
- * Class:     org_tensorflow_lite_Tensor
- * Method:    buffer
- * Signature: (J)Ljava/nio/ByteBuffer;
- */
-JNIEXPORT jobject JNICALL Java_org_tensorflow_lite_Tensor_buffer(JNIEnv* env,
-                                                                 jclass clazz,
-                                                                 jlong handle);
-
-/*
- *  Class:     org_tensorflow_lite_Tensor
- *  Method:    writeDirectBuffer
- *  Signature: (JLjava/nio/ByteBuffer;)
- */
-JNIEXPORT void JNICALL Java_org_tensorflow_lite_Tensor_writeDirectBuffer(
-    JNIEnv* env, jclass clazz, jlong handle, jobject src);
-
-/*
- *  Class:     org_tensorflow_lite_Tensor
- *  Method:    dtype
+ *  Class:     org_tensorflow_lite_TfLiteTensor
+ *  Method:
  *  Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_org_tensorflow_lite_Tensor_dtype(JNIEnv* env,
@@ -50,8 +33,8 @@ JNIEXPORT jint JNICALL Java_org_tensorflow_lite_Tensor_dtype(JNIEnv* env,
                                                              jlong handle);
 
 /*
- *  Class:     org_tensorflow_lite_Tensor
- *  Method:    shape
+ *  Class:     org_tensorflow_lite_TfLiteTensor
+ *  Method:
  *  Signature: (J)[I
  */
 JNIEXPORT jintArray JNICALL Java_org_tensorflow_lite_Tensor_shape(JNIEnv* env,
@@ -59,35 +42,31 @@ JNIEXPORT jintArray JNICALL Java_org_tensorflow_lite_Tensor_shape(JNIEnv* env,
                                                                   jlong handle);
 
 /*
- *  Class:     org_tensorflow_lite_Tensor
- *  Method:    numBytes
- *  Signature: (J)I
- */
-JNIEXPORT jint JNICALL Java_org_tensorflow_lite_Tensor_numBytes(JNIEnv* env,
-                                                                jclass clazz,
-                                                                jlong handle);
-
-/*
- *  Class:     org_tensorflow_lite_Tensor
- *  Method:    readMultiDimensionalArray
+ *  Class:     org_tensorflow_lite_TfLiteTensor
+ *  Method:
  *  Signature: (JLjava/lang/Object;)
  */
 JNIEXPORT void JNICALL
 Java_org_tensorflow_lite_Tensor_readMultiDimensionalArray(JNIEnv* env,
                                                           jclass clazz,
                                                           jlong handle,
-                                                          jobject dst);
+                                                          jobject value);
 
 /*
- *  Class:     org_tensorflow_lite_Tensor
- *  Method:    writeMultidimensionalArray
- *  Signature: (JLjava/lang/Object;)
+ * Finds the size of each data type.
  */
-JNIEXPORT void JNICALL
-Java_org_tensorflow_lite_Tensor_writeMultiDimensionalArray(JNIEnv* env,
-                                                           jclass clazz,
-                                                           jlong handle,
-                                                           jobject src);
+size_t elementByteSize(TfLiteType data_type);
+
+/*
+ * Writes data of a ByteBuffer into dest.
+ */
+size_t writeByteBuffer(JNIEnv* env, jobject object, char** dst, int dst_size);
+
+/*
+ * Writes a multi-dimensional array into dest.
+ */
+size_t writeMultiDimensionalArray(JNIEnv* env, jobject src, TfLiteType type,
+                                  int dims_left, char** dst, int dst_size);
 
 #ifdef __cplusplus
 }  // extern "C"

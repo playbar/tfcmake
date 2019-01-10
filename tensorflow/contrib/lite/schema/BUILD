@@ -30,10 +30,7 @@ py_test(
     size = "small",
     srcs = ["upgrade_schema_test.py"],
     srcs_version = "PY2AND3",
-    tags = [
-        "no_oss",
-        "no_pip",
-    ],
+    tags = ["no_pip"],
     deps = [
         ":upgrade_schema",
         "//tensorflow/python:client_testlib",
@@ -67,9 +64,7 @@ cc_test(
         "schema_v3.fbs",
     ],
     tags = [
-        "no_oss",
         "tflite_not_portable_android",
-        "tflite_not_portable_ios",
     ],
     deps = [
         "//tensorflow/core:lib_platform",

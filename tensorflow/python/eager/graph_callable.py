@@ -110,25 +110,13 @@ class _VariableCapturingScope(object):
     """
     # TODO(apassos) ignoring the regularizer and partitioner here; figure out
     # how to deal with these.
-    def _custom_getter(  # pylint: disable=missing-docstring
-        getter=None,
-        name=None,
-        shape=None,
-        dtype=dtypes.float32,
-        initializer=None,
-        regularizer=None,
-        reuse=None,
-        trainable=None,
-        collections=None,
-        caching_device=None,  # pylint: disable=redefined-outer-name
-        partitioner=None,
-        validate_shape=True,
-        use_resource=None,
-        aggregation=variable_scope.VariableAggregation.NONE,
-        synchronization=variable_scope.VariableSynchronization.AUTO):
+    def _custom_getter(getter=None, name=None, shape=None, dtype=dtypes.float32,  # pylint: disable=missing-docstring
+                       initializer=None, regularizer=None, reuse=None,
+                       trainable=True, collections=None, caching_device=None,  # pylint: disable=redefined-outer-name
+                       partitioner=None, validate_shape=True,
+                       use_resource=None):
       del getter, regularizer, partitioner, validate_shape, use_resource, dtype
-      del collections, initializer, trainable, reuse, caching_device, shape
-      del aggregation, synchronization
+      del collections, initializer, trainable, reuse, caching_device, shape,
       assert name in self.variables
       v = self.variables[name]
       return v.variable
@@ -148,24 +136,13 @@ class _VariableCapturingScope(object):
     """
     # TODO(apassos) ignoring the regularizer and partitioner here; figure out
     # how to deal with these.
-    def _custom_getter(  # pylint: disable=missing-docstring
-        getter=None,
-        name=None,
-        shape=None,
-        dtype=dtypes.float32,
-        initializer=None,
-        regularizer=None,
-        reuse=None,
-        trainable=None,
-        collections=None,
-        caching_device=None,  # pylint: disable=redefined-outer-name
-        partitioner=None,
-        validate_shape=True,
-        use_resource=None,
-        aggregation=variable_scope.VariableAggregation.NONE,
-        synchronization=variable_scope.VariableSynchronization.AUTO):
+    def _custom_getter(getter=None, name=None, shape=None, dtype=dtypes.float32,  # pylint: disable=missing-docstring
+                       initializer=None, regularizer=None, reuse=None,
+                       trainable=True, collections=None, caching_device=None,  # pylint: disable=redefined-outer-name
+                       partitioner=None, validate_shape=True,
+                       use_resource=None):
       del getter, regularizer, collections, caching_device, partitioner
-      del use_resource, validate_shape, aggregation, synchronization
+      del use_resource, validate_shape
       if name in self.tf_variables:
         if reuse:
           return self.tf_variables[name].initialized_value()

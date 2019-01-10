@@ -37,7 +37,6 @@ class TestModelCloning(test.TestCase):
 
       model = keras.models.Sequential()
       model.add(keras.layers.Dense(4, input_shape=(4,)))
-      model.add(keras.layers.BatchNormalization())
       model.add(keras.layers.Dropout(0.5))
       model.add(keras.layers.Dense(4))
 
@@ -47,8 +46,6 @@ class TestModelCloning(test.TestCase):
     with self.test_session():
       # With placeholder creation
       new_model = keras.models.clone_model(model)
-      # update ops from batch norm needs to be included
-      self.assertEquals(len(new_model.get_updates_for(new_model.inputs)), 2)
       new_model.compile('rmsprop', 'mse')
       new_model.train_on_batch(val_a, val_out)
 
@@ -56,7 +53,6 @@ class TestModelCloning(test.TestCase):
       input_a = keras.Input(shape=(4,))
       new_model = keras.models.clone_model(
           model, input_tensors=input_a)
-      self.assertEquals(len(new_model.get_updates_for(new_model.inputs)), 2)
       new_model.compile('rmsprop', 'mse')
       new_model.train_on_batch(val_a, val_out)
 
@@ -64,7 +60,6 @@ class TestModelCloning(test.TestCase):
       input_a = keras.backend.variable(val_a)
       new_model = keras.models.clone_model(
           model, input_tensors=input_a)
-      self.assertEquals(len(new_model.get_updates_for(new_model.inputs)), 2)
       new_model.compile('rmsprop', 'mse')
       new_model.train_on_batch(None, val_out)
 
@@ -81,7 +76,6 @@ class TestModelCloning(test.TestCase):
 
       x_a = dense_1(input_a)
       x_a = keras.layers.Dropout(0.5)(x_a)
-      x_a = keras.layers.BatchNormalization()(x_a)
       x_b = dense_1(input_b)
       x_a = dense_2(x_a)
       outputs = keras.layers.add([x_a, x_b])
@@ -93,7 +87,6 @@ class TestModelCloning(test.TestCase):
     with self.test_session():
       # With placeholder creation
       new_model = keras.models.clone_model(model)
-      self.assertEquals(len(new_model.get_updates_for(new_model.inputs)), 2)
       new_model.compile('rmsprop', 'mse')
       new_model.train_on_batch([val_a, val_b], val_out)
 
@@ -102,7 +95,6 @@ class TestModelCloning(test.TestCase):
       input_b = keras.Input(shape=(4,), name='b')
       new_model = keras.models.clone_model(
           model, input_tensors=[input_a, input_b])
-      self.assertEquals(len(new_model.get_updates_for(new_model.inputs)), 2)
       new_model.compile('rmsprop', 'mse')
       new_model.train_on_batch([val_a, val_b], val_out)
 
@@ -111,7 +103,6 @@ class TestModelCloning(test.TestCase):
       input_b = keras.backend.variable(val_b)
       new_model = keras.models.clone_model(
           model, input_tensors=[input_a, input_b])
-      self.assertEquals(len(new_model.get_updates_for(new_model.inputs)), 2)
       new_model.compile('rmsprop', 'mse')
       new_model.train_on_batch(None, val_out)
 
@@ -138,7 +129,7 @@ class TestModelCloning(test.TestCase):
 
 class CheckpointingTests(test.TestCase):
 
-  @test_util.run_in_graph_and_eager_modes
+  @test_util.run_in_graph_and_eager_modes()
   def test_optimizer_dependency(self):
     model = keras.models.Sequential()
     model.add(keras.layers.Dense(1, input_shape=(4,)))
@@ -152,20 +143,6 @@ class CheckpointingTests(test.TestCase):
     self.evaluate(beta1_power.assign(13.))
     model.load_weights(save_prefix)
     self.assertEqual(12., self.evaluate(beta1_power))
-
-class TestModelBackend(test.TestCase):
-
-  def test_model_backend_float64_use_cases(self):
-    # Test case for GitHub issue 19318
-    floatx = keras.backend.floatx()
-    keras.backend.set_floatx('float64')
-
-    x = keras.Input((5,))
-    y = keras.layers.Dense(1)(x)
-    model = keras.models.Model(x, y)
-    model.compile('rmsprop', 'mse')
-
-    keras.backend.set_floatx(floatx)
 
 if __name__ == '__main__':
   test.main()

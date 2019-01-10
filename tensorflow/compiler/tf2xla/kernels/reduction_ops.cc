@@ -19,9 +19,7 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "tensorflow/compiler/xla/client/lib/constants.h"
-#include "tensorflow/compiler/xla/client/xla_client/xla_builder.h"
-#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/core/framework/kernel_def_builder.h"
 
 namespace tensorflow {
@@ -33,11 +31,11 @@ class SumOp : public XlaReductionOp {
       : XlaReductionOp(ctx,
                        XlaHelpers::SumAccumulationType(ctx->input_type(0))) {}
   xla::XlaOp InitialValue(xla::XlaBuilder* builder) override {
-    return xla::Zero(builder, xla_reduction_type_);
+    return XlaHelpers::Zero(builder, reduction_type_);
   }
   void BuildReducer(xla::XlaBuilder* builder, const xla::XlaOp& scalar_lhs,
                     const xla::XlaOp& scalar_rhs) override {
-    xla::Add(scalar_lhs, scalar_rhs);
+    builder->Add(scalar_lhs, scalar_rhs);
   }
 };
 
@@ -50,12 +48,12 @@ class ProdOp : public XlaReductionOp {
                        XlaHelpers::SumAccumulationType(ctx->input_type(0))) {}
 
   xla::XlaOp InitialValue(xla::XlaBuilder* builder) override {
-    return xla::One(builder, xla_reduction_type_);
+    return XlaHelpers::One(builder, reduction_type_);
   }
 
   void BuildReducer(xla::XlaBuilder* builder, const xla::XlaOp& scalar_lhs,
                     const xla::XlaOp& scalar_rhs) override {
-    xla::Mul(scalar_lhs, scalar_rhs);
+    builder->Mul(scalar_lhs, scalar_rhs);
   }
 };
 
@@ -68,12 +66,12 @@ class MinOp : public XlaReductionOp {
       : XlaReductionOp(ctx, ctx->input_type(0)) {}
 
   xla::XlaOp InitialValue(xla::XlaBuilder* builder) override {
-    return xla::MaxValue(builder, xla_reduction_type_);
+    return XlaHelpers::MaxValue(builder, reduction_type_);
   }
 
   void BuildReducer(xla::XlaBuilder* builder, const xla::XlaOp& scalar_lhs,
                     const xla::XlaOp& scalar_rhs) override {
-    xla::Min(scalar_lhs, scalar_rhs);
+    builder->Min(scalar_lhs, scalar_rhs);
   }
 };
 
@@ -85,12 +83,12 @@ class MaxOp : public XlaReductionOp {
       : XlaReductionOp(ctx, ctx->input_type(0)) {}
 
   xla::XlaOp InitialValue(xla::XlaBuilder* builder) override {
-    return xla::MinValue(builder, xla_reduction_type_);
+    return XlaHelpers::MinValue(builder, reduction_type_);
   }
 
   void BuildReducer(xla::XlaBuilder* builder, const xla::XlaOp& scalar_lhs,
                     const xla::XlaOp& scalar_rhs) override {
-    xla::Max(scalar_lhs, scalar_rhs);
+    builder->Max(scalar_lhs, scalar_rhs);
   }
 };
 
@@ -103,11 +101,11 @@ class MeanOp : public XlaReductionOp {
                        XlaHelpers::SumAccumulationType(ctx->input_type(0))) {}
 
   xla::XlaOp InitialValue(xla::XlaBuilder* builder) override {
-    return xla::Zero(builder, xla_reduction_type_);
+    return XlaHelpers::Zero(builder, reduction_type_);
   }
   void BuildReducer(xla::XlaBuilder* builder, const xla::XlaOp& scalar_lhs,
                     const xla::XlaOp& scalar_rhs) override {
-    xla::Add(scalar_lhs, scalar_rhs);
+    builder->Add(scalar_lhs, scalar_rhs);
   }
 
   xla::XlaOp BuildFinalizer(xla::XlaBuilder* builder,
@@ -115,7 +113,7 @@ class MeanOp : public XlaReductionOp {
                             int64 num_elements_reduced) override {
     auto divisor = XlaHelpers::IntegerLiteral(builder, input_type(0),
                                               num_elements_reduced);
-    return reduce_output / divisor;
+    return builder->Div(reduce_output, divisor);
   }
 };
 
@@ -128,12 +126,12 @@ class AllOp : public XlaReductionOp {
       : XlaReductionOp(ctx, ctx->input_type(0)) {}
 
   xla::XlaOp InitialValue(xla::XlaBuilder* builder) override {
-    return xla::ConstantR0<bool>(builder, true);
+    return builder->ConstantR0<bool>(true);
   }
 
   void BuildReducer(xla::XlaBuilder* builder, const xla::XlaOp& scalar_lhs,
                     const xla::XlaOp& scalar_rhs) override {
-    xla::And(scalar_lhs, scalar_rhs);
+    builder->And(scalar_lhs, scalar_rhs);
   }
 };
 
@@ -145,12 +143,12 @@ class AnyOp : public XlaReductionOp {
       : XlaReductionOp(ctx, ctx->input_type(0)) {}
 
   xla::XlaOp InitialValue(xla::XlaBuilder* builder) override {
-    return xla::ConstantR0<bool>(builder, false);
+    return builder->ConstantR0<bool>(false);
   }
 
   void BuildReducer(xla::XlaBuilder* builder, const xla::XlaOp& scalar_lhs,
                     const xla::XlaOp& scalar_rhs) override {
-    xla::Or(scalar_lhs, scalar_rhs);
+    builder->Or(scalar_lhs, scalar_rhs);
   }
 };
 

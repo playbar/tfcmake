@@ -55,19 +55,18 @@ struct PyCall {
   string token;
 
   // The device on which Tensors are stored; only used for EagerPyFunc.
-  Device* device = nullptr;
+  Device* device;
+
+  // True if and only if the op has been placed on a GPU.
+  bool gpu;
 
   // True if the call is associated with an EagerPyFunc.
-  bool eager = false;
+  bool eager;
 
   // Inputs and outputs of this function invocation.
   std::vector<Tensor> ins;
   std::vector<Tensor> out;
 };
-
-bool IsCPUDevice(const Device* d) {
-  return d == nullptr || d->tensorflow_gpu_device_info() == nullptr;
-}
 
 // Givens the 'call', prepares the token and inputs as a python tuple
 // that is appropriate for calling the trampoline.
@@ -75,15 +74,18 @@ Status MakeArgTuple(const PyCall* call, PyObject** tuple) {
   int64 n = call->ins.size();
   PyObject* lst = PyList_New(n);
   CHECK(lst);
-  // TFE_TensorHandle assumes that CPU is identified by nullptr.
-  Device* device = IsCPUDevice(call->device) ? nullptr : call->device;
   for (int64 i = 0; i < n; ++i) {
     PyObject* arg = nullptr;
     const Tensor& t = call->ins[i];
     if (call->eager) {
-      arg = EagerTensorFromHandle(new TFE_TensorHandle(t, device, device));
+      if (call->gpu) {
+        arg = EagerTensorFromHandle(
+            new TFE_TensorHandle(t, call->device, call->device));
+      } else {
+        // TFE_TensorHandle assumes that CPU is identified by `nullptr`.
+        arg = EagerTensorFromHandle(new TFE_TensorHandle(t, nullptr, nullptr));
+      }
       if (arg == nullptr) {
-        Py_DECREF(lst);
         return errors::Internal("Unable to procure EagerTensor from Tensor.");
       }
     } else {
@@ -95,9 +97,8 @@ Status MakeArgTuple(const PyCall* call, PyObject** tuple) {
     }
     PyList_SetItem(lst, i, arg);
   }
-  const char* device_name =
-      device == nullptr ? nullptr : device->attributes().name().c_str();
-  *tuple = Py_BuildValue("(ssN)", call->token.c_str(), device_name, lst);
+  *tuple = Py_BuildValue("(sON)", call->token.c_str(),
+                         call->gpu ? Py_True : Py_False, lst);
   CHECK(*tuple);
   return Status::OK();
 }
@@ -166,40 +167,9 @@ bool IsSingleNone(PyObject* obj) {
 }
 
 // Retrieves a Tensor from `eager_tensor` and stores it in `output_tensor`.
-// Validates that `output_tensor` is backed by memory in `expected_device`
-// (which is assumed to be a local device, one on which the kernel was
-// executed.)
-//
-// It may be nice to copy the tensor to the right device instead of failing if
-// it isn't already there. This is left as a future exercise.  The required
-// device-copying logic is implemented in Python at the moment.
 tensorflow::Status ExtractTensorFromEagerTensor(const PyObject* eager_tensor,
-                                                const Device* expected_device,
                                                 const Tensor** output_tensor) {
-  auto handle = EagerTensor_Handle(eager_tensor)->handle;
-  Device* actual_device = nullptr;
-  TF_RETURN_IF_ERROR(handle->Device(&actual_device));
-  TF_RETURN_IF_ERROR(handle->Tensor(output_tensor));
-  // actual_device may be nullptr, which implies local CPU.
-  if (expected_device == actual_device) return Status::OK();
-  const string& expected_device_name = expected_device->attributes().name();
-  if (actual_device == nullptr) {
-    if (!IsCPUDevice(expected_device)) {
-      return errors::Internal(
-          "expected the py_func to return a Tensor backed by memory in ",
-          expected_device_name,
-          ", but is actually backed by local host memory. This is a bug.");
-    }
-    return Status::OK();
-  }
-  const string& actual_device_name = actual_device->attributes().name();
-  if (actual_device_name != expected_device_name) {
-    return errors::Internal(
-        "expected the py_func to return a Tensor backed by memory in ",
-        expected_device_name, ", but is actually in ", actual_device_name,
-        ". This is a bug.");
-  }
-  return Status::OK();
+  return EagerTensor_Handle(eager_tensor)->handle->Tensor(output_tensor);
 }
 
 // Calls the registered py function through the trampoline.
@@ -254,7 +224,7 @@ Status DoCallPyFunc(PyCall* call, bool* out_log_on_error) {
         const PyObject* item = PyList_GetItem(result, i);
         if (EagerTensor_CheckExact(item)) {
           const Tensor* tensor = nullptr;
-          s = ExtractTensorFromEagerTensor(item, call->device, &tensor);
+          s = ExtractTensorFromEagerTensor(item, &tensor);
           if (s.ok()) t = *tensor;
         } else {
           s = errors::FailedPrecondition(
@@ -275,7 +245,7 @@ Status DoCallPyFunc(PyCall* call, bool* out_log_on_error) {
     DCHECK(call->eager);
     if (result != Py_None) {
       const Tensor* t = nullptr;
-      s = ExtractTensorFromEagerTensor(result, call->device, &t);
+      s = ExtractTensorFromEagerTensor(result, &t);
       if (s.ok()) call->out.push_back(*t);
     }
   } else if (PyArray_Check(result)) {
@@ -479,11 +449,13 @@ class PyFuncOp : public OpKernel {
   explicit PyFuncOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
     OP_REQUIRES_OK(ctx, ctx->GetAttr("token", &token_));
     eager_ = type_string() == "EagerPyFunc";
+    gpu_ = ctx->device_type().type_string() == DEVICE_GPU;
   }
 
   void Compute(OpKernelContext* ctx) override {
     PyCall call;
     call.token = token_;
+    call.gpu = gpu_;
     call.eager = eager_;
     if (call.eager) {
       // Eager's C API uses `Device`, whereas `OpKernelContext` stores a
@@ -492,7 +464,6 @@ class PyFuncOp : public OpKernel {
       if (call.device == nullptr) {
         ctx->CtxFailureWithWarning(
             errors::Internal("Unrecognized device class"));
-        return;
       }
     }
 
@@ -536,6 +507,9 @@ class PyFuncOp : public OpKernel {
 
  private:
   string token_;
+
+  // True if and only if this op has been placed on a GPU.
+  bool gpu_;
 
   // True if and only if this op should execute the python function eagerly,
   // i.e., if and only if the eager attribute is set.

@@ -38,8 +38,7 @@ class AliasAnalysis {
 
   // Augments IrArray with aliasing information.
   void AddAliasingInformationToIrArray(const HloInstruction& hlo,
-                                       llvm_ir::IrArray* array,
-                                       const ShapeIndex& index = {});
+                                       llvm_ir::IrArray* array);
 
  private:
   // Returns a unique alias domain for this emitter.

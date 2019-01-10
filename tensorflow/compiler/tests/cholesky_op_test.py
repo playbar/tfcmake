@@ -18,10 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
+
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
-from tensorflow.compiler.tests import xla_test
+from tensorflow.compiler.tests.xla_test import XLATestCase
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import array_ops
@@ -30,7 +32,7 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.platform import test
 
 
-class CholeskyOpTest(xla_test.XLATestCase):
+class CholeskyOpTest(XLATestCase):
 
   # Cholesky defined for float64, float32, complex64, complex128
   # (https://www.tensorflow.org/api_docs/python/tf/cholesky)
@@ -101,8 +103,9 @@ class CholeskyOpTest(xla_test.XLATestCase):
       with self.assertRaises(ValueError):
         linalg_ops.cholesky(tensor3)
 
-  def testLarge2000x2000(self):
-    n = 2000
+  @unittest.skip("Test is slow")
+  def testLarge(self):
+    n = 200
     shape = (n, n)
     data = np.ones(shape).astype(np.float32) / (2.0 * n) + np.diag(
         np.ones(n).astype(np.float32))
@@ -124,6 +127,7 @@ class CholeskyOpTest(xla_test.XLATestCase):
       v = np.exp(-np.log(condition_number) * np.linspace(0, size, size) / size)
       matrix = np.dot(np.dot(w, np.diag(v)), w.T).astype(dtype)
       self._verifyCholesky(matrix, atol=1e-4)
+
 
 if __name__ == "__main__":
   test.main()

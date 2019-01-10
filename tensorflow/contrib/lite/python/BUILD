@@ -19,8 +19,6 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         "//tensorflow/contrib/lite/python/interpreter_wrapper:tensorflow_wrap_interpreter_wrapper",
-        "//tensorflow/python:util",
-        "//third_party/py/numpy",
     ],
 )
 
@@ -32,10 +30,9 @@ py_test(
     tags = ["no_oss"],
     deps = [
         ":interpreter",
+        "//tensorflow/python:array_ops",
         "//tensorflow/python:client_testlib",
-        "//tensorflow/python:framework_test_lib",
-        "//tensorflow/python:platform",
-        "//third_party/py/numpy",
+        "//tensorflow/python:platform_test",
     ],
 )
 
@@ -60,9 +57,8 @@ py_library(
         ":interpreter",
         ":lite_constants",
         ":op_hint",
+        "//tensorflow/contrib/saved_model:saved_model_py",
         "//tensorflow/python:graph_util",
-        "//tensorflow/python/saved_model:constants",
-        "//tensorflow/python/saved_model:loader",
         "//tensorflow/python/tools:freeze_graph_lib",
     ],
 )
@@ -72,10 +68,7 @@ py_test(
     srcs = ["lite_test.py"],
     data = [":interpreter_test_data"],
     srcs_version = "PY2AND3",
-    tags = [
-        "no_oss",
-        "no_windows",
-    ],
+    tags = ["no_windows"],
     deps = [
         ":lite",
     ],
@@ -167,10 +160,7 @@ py_test(
     name = "convert_saved_model_test",
     srcs = ["convert_saved_model_test.py"],
     srcs_version = "PY2AND3",
-    tags = [
-        "no_oss",
-        "no_windows",
-    ],
+    tags = ["no_windows"],
     visibility = ["//visibility:public"],
     deps = [
         ":convert_saved_model",

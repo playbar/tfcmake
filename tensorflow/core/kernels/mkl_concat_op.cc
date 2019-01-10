@@ -27,17 +27,16 @@ limitations under the License.
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/types.h"
 
+#include "mkl_dnn.h"
+#include "mkl_dnn_types.h"
+#include "tensorflow/core/util/mkl_util.h"
 
 #ifndef INTEL_MKL_ML
 #include "mkldnn.hpp"
 
 using mkldnn::concat;
 using mkldnn::stream;
-#else
-#include "mkl_dnn.h"
-#include "mkl_dnn_types.h"
 #endif
-#include "tensorflow/core/util/mkl_util.h"
 
 namespace tensorflow {
 typedef Eigen::ThreadPoolDevice CPUDevice;
@@ -704,14 +703,14 @@ class MklConcatOp : public OpKernel {
             if (input_tensors[k].NumElements() == 0)
               continue;
 
+            auto src_dims = TFShapeToMklDnnDims(
+                mkl_input_shapes[k].GetTfShape());
             auto src_md = mkl_input_shapes[k].GetMklLayout();
             srcs[k].SetUsrMem(src_md, &input_tensors[k]);
 
-            if (src_md.data.format != mkl_common_format) {
-              memory::dims src_dims(src_md.data.dims, &src_md.data.dims[src_md.data.ndims]);
+            if (src_md.data.format != mkl_common_format)
               src_md = memory::desc(src_dims, MklDnnType<T>(),
                            mkl_common_format);
-            }
 
             srcs_pd.push_back(memory::primitive_desc(src_md, cpu_engine));
           }
@@ -756,10 +755,11 @@ class MklConcatOp : public OpKernel {
       }
 
       std::vector<primitive::at> inputs;
+      std::vector<primitive> net;
       if (isMklReorderNeeded) {
         for (int k = 0; k < input_tensors.size(); k++) {
           if (input_tensors[k].NumElements() > 0) {
-            srcs[k].CheckReorderToOpMem(srcs_pd[k]);
+            srcs[k].CheckReorderToOpMem(srcs_pd[k], &net);
           }
         }
       }
@@ -805,7 +805,6 @@ class MklConcatOp : public OpKernel {
       dst.SetUsrMem(dst_md, dst_tensor);
 
       auto concat_op = concat(concat_pd, inputs, dst.GetOpMem());
-      std::vector<primitive> net;
       net.push_back(concat_op);
       stream(stream::kind::eager).submit(net).wait();
     } catch (mkldnn::error& e) {

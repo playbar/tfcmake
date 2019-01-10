@@ -267,22 +267,7 @@ Status ConcatV2Shape(shape_inference::InferenceContext* c);
 
 // Shape function for binary operators that broadcast their inputs
 // and with output to output_index.
-// Note: out cannot be NULL.
-Status BroadcastBinaryOpOutputShapeFnHelper(InferenceContext* c,
-                                            ShapeHandle shape_x,
-                                            ShapeHandle shape_y,
-                                            ShapeHandle* out);
-
-// Shape function for binary operators that broadcast their inputs
-// and with output to output_index.
-inline Status BroadcastBinaryOpOutputShapeFn(InferenceContext* c,
-                                             int output_index) {
-  ShapeHandle out;
-  TF_RETURN_IF_ERROR(
-      BroadcastBinaryOpOutputShapeFnHelper(c, c->input(0), c->input(1), &out));
-  c->set_output(output_index, out);
-  return Status::OK();
-}
+Status BroadcastBinaryOpOutputShapeFn(InferenceContext* c, int output_index);
 
 // Shape function for binary operators that broadcast their inputs.
 // Tested by ops/math_ops_test.cc.

@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 
 #include "tensorflow/compiler/xla/service/gpu/cudnn_batchnorm_rewriter.h"
-#include "tensorflow/compiler/xla/literal.h"
 #include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/compiler/xla/service/gpu/ir_emission_utils.h"
 
@@ -67,12 +66,11 @@ Status Visitor::HandleBatchNormInference(HloInstruction* batch_norm) {
     return Status::OK();
   }
 
-  HloInstruction* epsilon =
-      computation_->AddInstruction(HloInstruction::CreateConstant(
-          LiteralUtil::CreateR0(batch_norm->epsilon())));
+  HloInstruction* epsilon = computation_->AddInstruction(
+      HloInstruction::CreateConstant(Literal::CreateR0(batch_norm->epsilon())));
   HloInstruction* feature_index =
       computation_->AddInstruction(HloInstruction::CreateConstant(
-          LiteralUtil::CreateR0(batch_norm->feature_index())));
+          Literal::CreateR0(batch_norm->feature_index())));
 
   std::vector<HloInstruction*> operands(batch_norm->operands().begin(),
                                         batch_norm->operands().end());
@@ -103,12 +101,11 @@ Status Visitor::HandleBatchNormTraining(HloInstruction* batch_norm) {
     return Status::OK();
   }
 
-  HloInstruction* epsilon =
-      computation_->AddInstruction(HloInstruction::CreateConstant(
-          LiteralUtil::CreateR0(batch_norm->epsilon())));
+  HloInstruction* epsilon = computation_->AddInstruction(
+      HloInstruction::CreateConstant(Literal::CreateR0(batch_norm->epsilon())));
   HloInstruction* feature_index =
       computation_->AddInstruction(HloInstruction::CreateConstant(
-          LiteralUtil::CreateR0(batch_norm->feature_index())));
+          Literal::CreateR0(batch_norm->feature_index())));
 
   std::vector<HloInstruction*> operands(batch_norm->operands().begin(),
                                         batch_norm->operands().end());
@@ -129,17 +126,12 @@ Status Visitor::HandleBatchNormTraining(HloInstruction* batch_norm) {
   HloInstruction* variance_plus_epsilon =
       computation_->AddInstruction(HloInstruction::CreateBinary(
           inverse_stddev->shape(), HloOpcode::kPower, inverse_stddev,
-          computation_->AddInstruction(HloInstruction::CreateBroadcast(
-              inverse_stddev->shape(),
-              computation_->AddInstruction(HloInstruction::CreateConstant(
-                  LiteralUtil::CreateR0<float>(-2))),
-              {}))));
+          computation_->AddInstruction(
+              HloInstruction::CreateConstant(Literal::CreateR0<float>(-2)))));
   HloInstruction* variance =
       computation_->AddInstruction(HloInstruction::CreateBinary(
           variance_plus_epsilon->shape(), HloOpcode::kSubtract,
-          variance_plus_epsilon,
-          computation_->AddInstruction(HloInstruction::CreateBroadcast(
-              variance_plus_epsilon->shape(), epsilon, {}))));
+          variance_plus_epsilon, epsilon));
 
   // Repackage the results.
   std::unique_ptr<HloInstruction> new_tuple = HloInstruction::CreateTuple({
@@ -172,29 +164,23 @@ Status Visitor::HandleBatchNormGrad(HloInstruction* batch_norm) {
     return Status::OK();
   }
 
-  HloInstruction* epsilon =
-      computation_->AddInstruction(HloInstruction::CreateConstant(
-          LiteralUtil::CreateR0(batch_norm->epsilon())));
+  HloInstruction* epsilon = computation_->AddInstruction(
+      HloInstruction::CreateConstant(Literal::CreateR0(batch_norm->epsilon())));
   HloInstruction* feature_index =
       computation_->AddInstruction(HloInstruction::CreateConstant(
-          LiteralUtil::CreateR0(batch_norm->feature_index())));
+          Literal::CreateR0(batch_norm->feature_index())));
 
   // The cudnn libcall expects its input to be rsqrt(variance + epsilon), but
   // the batchnorm HLO takes plain variance as input.  Fix it up.
   HloInstruction* var_plus_epsilon =
       computation_->AddInstruction(HloInstruction::CreateBinary(
           batch_norm->operand(3)->shape(), HloOpcode::kAdd,
-          batch_norm->mutable_operand(3),
-          computation_->AddInstruction(HloInstruction::CreateBroadcast(
-              batch_norm->operand(3)->shape(), epsilon, {}))));
+          batch_norm->mutable_operand(3), epsilon));
   HloInstruction* inverse_stddev =
       computation_->AddInstruction(HloInstruction::CreateBinary(
           var_plus_epsilon->shape(), HloOpcode::kPower, var_plus_epsilon,
-          computation_->AddInstruction(HloInstruction::CreateBroadcast(
-              var_plus_epsilon->shape(),
-              computation_->AddInstruction(HloInstruction::CreateConstant(
-                  LiteralUtil::CreateR0<float>(-.5))),
-              {}))));
+          computation_->AddInstruction(
+              HloInstruction::CreateConstant(Literal::CreateR0<float>(-.5)))));
 
   std::vector<HloInstruction*> operands(batch_norm->operands().begin(),
                                         batch_norm->operands().end());

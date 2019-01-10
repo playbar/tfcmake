@@ -24,7 +24,6 @@
 @@CholeskyOuterProduct
 @@ConditionalBijector
 @@Exp
-@@FillTriangular
 @@Gumbel
 @@Identity
 @@Inline
@@ -37,14 +36,12 @@
 @@PowerTransform
 @@RealNVP
 @@Reshape
-@@ScaleTriL
 @@Sigmoid
 @@SinhArcsinh
 @@SoftmaxCentered
 @@Softplus
 @@Softsign
 @@Square
-@@TransformDiagonal
 @@Weibull
 
 @@masked_autoregressive_default_template
@@ -67,7 +64,6 @@ from tensorflow.contrib.distributions.python.ops.bijectors.chain import *
 from tensorflow.contrib.distributions.python.ops.bijectors.cholesky_outer_product import *
 from tensorflow.contrib.distributions.python.ops.bijectors.conditional_bijector import *
 from tensorflow.contrib.distributions.python.ops.bijectors.exp import *
-from tensorflow.contrib.distributions.python.ops.bijectors.fill_triangular import *
 from tensorflow.contrib.distributions.python.ops.bijectors.gumbel import *
 from tensorflow.contrib.distributions.python.ops.bijectors.inline import *
 from tensorflow.contrib.distributions.python.ops.bijectors.invert import *
@@ -79,14 +75,12 @@ from tensorflow.contrib.distributions.python.ops.bijectors.permute import *
 from tensorflow.contrib.distributions.python.ops.bijectors.power_transform import *
 from tensorflow.contrib.distributions.python.ops.bijectors.real_nvp import *
 from tensorflow.contrib.distributions.python.ops.bijectors.reshape import *
-from tensorflow.contrib.distributions.python.ops.bijectors.scale_tril import *
 from tensorflow.contrib.distributions.python.ops.bijectors.sigmoid import *
 from tensorflow.contrib.distributions.python.ops.bijectors.sinh_arcsinh import *
 from tensorflow.contrib.distributions.python.ops.bijectors.softmax_centered import *
 from tensorflow.contrib.distributions.python.ops.bijectors.softplus import *
 from tensorflow.contrib.distributions.python.ops.bijectors.softsign import *
 from tensorflow.contrib.distributions.python.ops.bijectors.square import *
-from tensorflow.contrib.distributions.python.ops.bijectors.transform_diagonal import *
 from tensorflow.python.ops.distributions.bijector import *
 from tensorflow.python.ops.distributions.identity_bijector import Identity
 

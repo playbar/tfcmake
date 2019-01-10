@@ -631,9 +631,6 @@ GcsFileSystem::GcsFileSystem()
     // Setting either to 0 disables the cache; set both for good measure.
     block_size = max_bytes = 0;
   }
-  VLOG(1) << "GCS cache max size = " << max_bytes << " ; "
-          << "block size = " << block_size << " ; "
-          << "max staleness = " << max_staleness;
   file_block_cache_ = MakeFileBlockCache(block_size, max_bytes, max_staleness);
   // Apply overrides for the stat cache max age and max entries, if provided.
   uint64 stat_cache_max_age = kStatCacheDefaultMaxAge;
@@ -807,7 +804,7 @@ void GcsFileSystem::ResetFileBlockCache(size_t block_size_bytes,
   mutex_lock l(block_cache_lock_);
   file_block_cache_ =
       MakeFileBlockCache(block_size_bytes, max_bytes, max_staleness_secs);
-  if (stats_ != nullptr) {
+  if (stats_) {
     stats_->Configure(this, &throttle_, file_block_cache_.get());
   }
 }
@@ -1560,7 +1557,6 @@ Status GcsFileSystem::CreateHttpRequest(std::unique_ptr<HttpRequest>* request) {
   return Status::OK();
 }
 
-}  // namespace tensorflow
+REGISTER_FILE_SYSTEM("gs", RetryingGcsFileSystem);
 
-// Initialize gcs_file_system
-REGISTER_FILE_SYSTEM("gs", ::tensorflow::RetryingGcsFileSystem);
+}  // namespace tensorflow

@@ -133,15 +133,10 @@ class EditDistanceOp : public OpKernel {
     std::vector<int64> sorted_order(truth_st_shape.dims());
     std::iota(sorted_order.begin(), sorted_order.end(), 0);
 
-    sparse::SparseTensor hypothesis;
-    OP_REQUIRES_OK(ctx, sparse::SparseTensor::Create(
-                            *hypothesis_indices, *hypothesis_values,
-                            hypothesis_st_shape, sorted_order, &hypothesis));
-
-    sparse::SparseTensor truth;
-    OP_REQUIRES_OK(ctx, sparse::SparseTensor::Create(
-                            *truth_indices, *truth_values, truth_st_shape,
-                            sorted_order, &truth));
+    sparse::SparseTensor hypothesis(*hypothesis_indices, *hypothesis_values,
+                                    hypothesis_st_shape, sorted_order);
+    sparse::SparseTensor truth(*truth_indices, *truth_values, truth_st_shape,
+                               sorted_order);
 
     // Group dims 0, 1, ..., RANK - 1.  The very last dim is assumed
     // to store the variable length sequences.

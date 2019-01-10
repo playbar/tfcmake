@@ -77,24 +77,18 @@ can be used as a starting point for your implementation:
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 
-namespace myproject {
+namespace tensorflow {
 namespace {
 
-using ::tensorflow::DT_STRING;
-using ::tensorflow::PartialTensorShape;
-using ::tensorflow::Status;
-
-class MyReaderDatasetOp : public tensorflow::DatasetOpKernel {
+class MyReaderDatasetOp : public DatasetOpKernel {
  public:
 
-  MyReaderDatasetOp(tensorflow::OpKernelConstruction* ctx)
-      : DatasetOpKernel(ctx) {
+  MyReaderDatasetOp(OpKernelConstruction* ctx) : DatasetOpKernel(ctx) {
     // Parse and validate any attrs that define the dataset using
     // `ctx->GetAttr()`, and store them in member variables.
   }
 
-  void MakeDataset(tensorflow::OpKernelContext* ctx,
-                   tensorflow::DatasetBase** output) override {
+  void MakeDataset(OpKernelContext* ctx, DatasetBase** output) override {
     // Parse and validate any input tensors 0that define the dataset using
     // `ctx->input()` or the utility function
     // `ParseScalarArgument<T>(ctx, &arg)`.
@@ -105,14 +99,14 @@ class MyReaderDatasetOp : public tensorflow::DatasetOpKernel {
   }
 
  private:
-  class Dataset : public tensorflow::GraphDatasetBase {
+  class Dataset : public GraphDatasetBase {
    public:
-    Dataset(tensorflow::OpKernelContext* ctx) : GraphDatasetBase(ctx) {}
+    Dataset(OpKernelContext* ctx) : GraphDatasetBase(ctx) {}
 
-    std::unique_ptr<tensorflow::IteratorBase> MakeIteratorInternal(
+    std::unique_ptr<IteratorBase> MakeIteratorInternal(
         const string& prefix) const override {
-      return std::unique_ptr<tensorflow::IteratorBase>(new Iterator(
-          {this, tensorflow::strings::StrCat(prefix, "::MyReader")}));
+      return std::unique_ptr<IteratorBase>(
+          new Iterator({this, strings::StrCat(prefix, "::MyReader")}));
     }
 
     // Record structure: Each record is represented by a scalar string tensor.
@@ -120,8 +114,8 @@ class MyReaderDatasetOp : public tensorflow::DatasetOpKernel {
     // Dataset elements can have a fixed number of components of different
     // types and shapes; replace the following two methods to customize this
     // aspect of the dataset.
-    const tensorflow::DataTypeVector& output_dtypes() const override {
-      static auto* const dtypes = new tensorflow::DataTypeVector({DT_STRING});
+    const DataTypeVector& output_dtypes() const override {
+      static DataTypeVector* dtypes = new DataTypeVector({DT_STRING});
       return *dtypes;
     }
     const std::vector<PartialTensorShape>& output_shapes() const override {
@@ -138,16 +132,16 @@ class MyReaderDatasetOp : public tensorflow::DatasetOpKernel {
     // Implement this method if you want to be able to save and restore
     // instances of this dataset (and any iterators over it).
     Status AsGraphDefInternal(DatasetGraphDefBuilder* b,
-                              tensorflow::Node** output) const override {
+                              Node** output) const override {
       // Construct nodes to represent any of the input tensors from this
       // object's member variables using `b->AddScalar()` and `b->AddVector()`.
-      std::vector<tensorflow::Node*> input_tensors;
+      std::vector<Node*> input_tensors;
       TF_RETURN_IF_ERROR(b->AddDataset(this, input_tensors, output));
       return Status::OK();
     }
 
    private:
-    class Iterator : public tensorflow::DatasetIterator<Dataset> {
+    class Iterator : public DatasetIterator<Dataset> {
      public:
       explicit Iterator(const Params& params)
           : DatasetIterator<Dataset>(params), i_(0) {}
@@ -164,15 +158,15 @@ class MyReaderDatasetOp : public tensorflow::DatasetOpKernel {
       //    return `Status::OK()`.
       // 3. If an error occurs, return an error status using one of the helper
       //    functions from "tensorflow/core/lib/core/errors.h".
-      Status GetNextInternal(tensorflow::IteratorContext* ctx,
-                             std::vector<tensorflow::Tensor>* out_tensors,
+      Status GetNextInternal(IteratorContext* ctx,
+                             std::vector<Tensor>* out_tensors,
                              bool* end_of_sequence) override {
         // NOTE: `GetNextInternal()` may be called concurrently, so it is
         // recommended that you protect the iterator state with a mutex.
-        tensorflow::mutex_lock l(mu_);
+        mutex_lock l(mu_);
         if (i_ < 10) {
           // Create a scalar string tensor and add it to the output.
-          tensorflow::Tensor record_tensor(ctx->allocator({}), DT_STRING, {});
+          Tensor record_tensor(ctx->allocator({}), DT_STRING, {});
           record_tensor.scalar<string>()() = "MyReader!";
           out_tensors->emplace_back(std::move(record_tensor));
           ++i_;
@@ -189,20 +183,20 @@ class MyReaderDatasetOp : public tensorflow::DatasetOpKernel {
       //
       // Implement these two methods if you want to be able to save and restore
       // instances of this iterator.
-      Status SaveInternal(tensorflow::IteratorStateWriter* writer) override {
-        tensorflow::mutex_lock l(mu_);
+      Status SaveInternal(IteratorStateWriter* writer) override {
+        mutex_lock l(mu_);
         TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("i"), i_));
         return Status::OK();
       }
-      Status RestoreInternal(tensorflow::IteratorContext* ctx,
-                             tensorflow::IteratorStateReader* reader) override {
-        tensorflow::mutex_lock l(mu_);
+      Status RestoreInternal(IteratorContext* ctx,
+                             IteratorStateReader* reader) override {
+        mutex_lock l(mu_);
         TF_RETURN_IF_ERROR(reader->ReadScalar(full_name("i"), &i_));
         return Status::OK();
       }
 
      private:
-      tensorflow::mutex mu_;
+      mutex mu_;
       int64 i_ GUARDED_BY(mu_);
     };
   };
@@ -217,14 +211,14 @@ class MyReaderDatasetOp : public tensorflow::DatasetOpKernel {
 REGISTER_OP("MyReaderDataset")
     .Output("handle: variant")
     .SetIsStateful()
-    .SetShapeFn(tensorflow::shape_inference::ScalarShape);
+    .SetShapeFn(shape_inference::ScalarShape);
 
 // Register the kernel implementation for MyReaderDataset.
-REGISTER_KERNEL_BUILDER(Name("MyReaderDataset").Device(tensorflow::DEVICE_CPU),
+REGISTER_KERNEL_BUILDER(Name("MyReaderDataset").Device(DEVICE_CPU),
                         MyReaderDatasetOp);
 
 }  // namespace
-}  // namespace myproject
+}  // namespace tensorflow
 ```
 
 The last step is to build the C++ code and add a Python wrapper. The easiest way

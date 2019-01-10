@@ -74,7 +74,6 @@ TEST_F(MetaOptimizerTest, RunsCustomOptimizer) {
   TestOptimizer::SetOptimized(false);
   RewriterConfig rewriter_config;
   rewriter_config.add_optimizers("TestOptimizer");
-  rewriter_config.set_min_graph_nodes(-1);
 
   MetaOptimizer optimizer(nullptr, rewriter_config);
   GraphDef output;
@@ -90,7 +89,6 @@ TEST_F(MetaOptimizerTest, RunOptimizersTwice) {
 
   RewriterConfig rewriter_config;
   rewriter_config.set_meta_optimizer_iterations(RewriterConfig::TWO);
-  rewriter_config.set_min_graph_nodes(-1);
 
   MetaOptimizer optimizer(nullptr, rewriter_config);
   GraphDef output;
@@ -106,7 +104,6 @@ TEST_F(MetaOptimizerTest, OptimizeFunctionLibrary) {
   rewriter_config.set_meta_optimizer_iterations(RewriterConfig::TWO);
   rewriter_config.set_function_optimization(RewriterConfig::ON);
   rewriter_config.add_optimizers("function");
-  rewriter_config.set_min_graph_nodes(-1);
 
   MetaOptimizer optimizer(nullptr, rewriter_config);
 

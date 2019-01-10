@@ -172,10 +172,8 @@ class SparseReduceOp : public OpKernel {
     // making deep copies here.  Remove this if/when we change Reorder()'s
     // semantics.
     const auto shape_vec = shape_t->vec<int64>();
-    SparseTensor sp;
-    OP_REQUIRES_OK(ctx, SparseTensor::Create(
-        tensor::DeepCopy(*indices_t), tensor::DeepCopy(*values_t),
-                    TensorShape(shape_vec), &sp));
+    SparseTensor sp(tensor::DeepCopy(*indices_t), tensor::DeepCopy(*values_t),
+                    TensorShape(shape_vec));
     ReduceDetails reduction = SparseTensorReduceHelper(
         sp, reduction_axes_t->flat<int32>(), keep_dims_);
 
@@ -262,10 +260,8 @@ class SparseReduceSparseOp : public OpKernel {
 
     OP_REQUIRES_OK(ctx, ValidateInputs(shape_t, reduction_axes_t));
 
-    SparseTensor sp;
-    OP_REQUIRES_OK(ctx, SparseTensor::Create(tensor::DeepCopy(*indices_t),
-                                         tensor::DeepCopy(*values_t),
-                    TensorShape(shape_t->vec<int64>()), &sp));
+    SparseTensor sp(tensor::DeepCopy(*indices_t), tensor::DeepCopy(*values_t),
+                    TensorShape(shape_t->vec<int64>()));
     ReduceDetails reduction = SparseTensorReduceHelper(
         sp, reduction_axes_t->flat<int32>(), keep_dims_);
 

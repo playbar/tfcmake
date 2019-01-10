@@ -27,6 +27,7 @@ Podfile.lock
 /tensorflow/contrib/lite/examples/ios/simple/data/*.txt
 /tensorflow/contrib/lite/examples/ios/simple/data/*.tflite
 xcuserdata/**
+/api_init_files_list.txt
 
 # Android
 .gradle
@@ -34,5 +35,5 @@ xcuserdata/**
 *.iml
 local.properties
 gradleBuild
+tensorflow/contrib/cmake/cmake-build-debug
 cmake-build-debug
-models

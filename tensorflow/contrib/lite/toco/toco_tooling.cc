@@ -34,11 +34,11 @@ limitations under the License.
 
 namespace toco {
 namespace {
-// CHECK-fails if the model contains a kUnsupported operation.
+// CHECK-fails if the model contains a kTensorFlowUnsupported operation.
 void CheckUnsupportedOperations(const Model& model) {
   std::set<string> unsupported_ops;
   for (auto& op : model.operators) {
-    if (op->type == OperatorType::kUnsupported) {
+    if (op->type == OperatorType::kTensorFlowUnsupported) {
       unsupported_ops.insert(
           static_cast<const TensorFlowUnsupportedOperator*>(op.get())
               ->tensorflow_op);
@@ -55,8 +55,7 @@ void MakeGeneralGraphTransformationsSet(
   transformations->Add(new ConvertExpandDimsToReshape);
   transformations->Add(new ConvertSqueezeToReshape);
   transformations->Add(new ConvertTrivialAddNToAdd);
-  transformations->Add(new ConvertTrivialPackToReshape);
-  transformations->Add(new ConvertTrivialTileToConcat);
+  transformations->Add(new ConvertTrivialStackToReshape);
   transformations->Add(new ConvertTrivialTransposeToReshape);
   transformations->Add(new ConvertReorderAxes);
   transformations->Add(new ResolveReshapeAttributes);
@@ -77,26 +76,25 @@ void MakeGeneralGraphTransformationsSet(
   transformations->Add(new ResolveTensorFlowMatMul);
   transformations->Add(new FuseBinaryIntoPrecedingAffine);
   transformations->Add(new FuseBinaryIntoFollowingAffine);
-  transformations->Add(new FuseBroadcastIntoFollowingBinary);
   transformations->Add(new MergeReshapeIntoPrecedingTranspose);
-  transformations->Add(new MoveBinaryOperatorBeforeReshape);
   transformations->Add(new ReorderElementwiseUnary);
   transformations->Add(new ReorderReshapeTranspose);
   transformations->Add(new ResolveBatchNormalization);
   transformations->Add(new ResolveConstantBinaryOperator);
   transformations->Add(new ResolveConstantFill);
   transformations->Add(new ResolveConstantGather);
-  transformations->Add(new ResolveConstantPack);
   transformations->Add(new ResolveConstantRandomUniform);
   transformations->Add(new ResolveConstantRange);
   transformations->Add(new ResolveConstantReshape);
   transformations->Add(new ResolveConstantSlice);
+  transformations->Add(new ResolveConstantStack);
   transformations->Add(new ResolveConstantStridedSlice);
   transformations->Add(new ResolveConstantTranspose);
   transformations->Add(new ResolveConstantUnaryOperator);
   transformations->Add(new ResolveTensorFlowMerge);
   transformations->Add(new ResolveSqueezeAttributes);
   transformations->Add(new ResolveTensorFlowSwitch);
+  transformations->Add(new ResolveTensorFlowTile);
   transformations->Add(new ResolveTensorFlowConcat);
   transformations->Add(new ResolveMultiplyByZero);
   transformations->Add(new IdentifyDilatedConv);
@@ -105,19 +103,17 @@ void MakeGeneralGraphTransformationsSet(
   transformations->Add(new IdentifyRelu1);
   transformations->Add(new IdentifyPRelu);
   transformations->Add(new RemoveTrivialBinaryOperator);
-  transformations->Add(new ResolveFakeQuantArgsFromVars);
-  transformations->Add(new ReadArrayMinmaxAndNarrowRangeFromFakeQuant);
+  transformations->Add(new ReadFakeQuantMinMax);
   transformations->Add(new ResolveSpaceToBatchNDAttributes);
   transformations->Add(new ResolveBatchToSpaceNDAttributes);
   transformations->Add(new ResolvePadAttributes);
   transformations->Add(new ResolvePadV2Attributes);
   transformations->Add(new ResolveStridedSliceAttributes);
   transformations->Add(new ResolveSliceAttributes);
-  transformations->Add(new ResolveReduceAttributes);
+  transformations->Add(new ResolveMeanAttributes);
   transformations->Add(new ResolveConstantShapeOrRank);
   transformations->Add(new MakeInitialDequantizeOperator);
   transformations->Add(new UnpartitionEmbeddingLookup);
-  transformations->Add(new ResolveGatherAttributes);
 }
 
 bool SupportsQuantization(FileFormat format) {
@@ -136,8 +132,6 @@ bool SupportsLstmCell(FileFormat format) {
 bool SupportsPreallocatedWorkspace(FileFormat format) {
   return (format == TFLITE);
 }
-
-bool SupportsShuffledFCWeights(FileFormat format) { return format == TFLITE; }
 
 bool IsRealValued(toco::ArrayDataType type) {
   // TODO(benoitjacob) - this is hardcoding that uint8 and int16 are only used
@@ -269,7 +263,7 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
     if (!toco_flags.debug_disable_recurrent_cell_fusion()) {
       transformations.Add(new IdentifyLstmCell);
     }
-    if (output_format == TFLITE && toco_flags.split_tflite_lstm_inputs()) {
+    if (output_format == TFLITE) {
       transformations.Add(new toco::SplitLstmCellInputs);
     } else {
       transformations.Add(new toco::MergeLstmCellInputs);
@@ -279,12 +273,6 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
   RunGraphTransformations(model, "general graph transformations",
                           transformations);
 
-  if (toco_flags.quantize_weights()) {
-    // Run the quantize weights transformation after batchnorms have been
-    // folded into the weights.
-    RunGraphTransformations(model, "quantize weights transformation",
-                            {new QuantizeWeights});
-  }
   if (quantize_output) {
     if (toco_flags.propagate_fake_quant_num_bits()) {
       RunGraphTransformations(model,
@@ -343,10 +331,6 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
                                 new RemoveFinalDequantizeOp,
                                 ensure_safe_for_int8_kernels,
                             });
-    if (SupportsShuffledFCWeights(output_format)) {
-      RunGraphTransformations(model, "shuffling of FC weights",
-                              {new ShuffleFCWeights});
-    }
   } else {
     GraphTransformationsSet dequantization_transformations{new Dequantize};
     // Dequantize creates FakeQuant nodes. We may want to discard

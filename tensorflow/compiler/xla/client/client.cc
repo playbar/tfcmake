@@ -20,7 +20,7 @@ limitations under the License.
 
 #include "tensorflow/compiler/xla/execution_options_util.h"
 #include "tensorflow/compiler/xla/legacy_flags/debug_options_flags.h"
-#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/compiler/xla/ptr_util.h"
 #include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/compiler/xla/types.h"
@@ -409,10 +409,8 @@ StatusOr<string> Client::ExecutionStatsAsString(
   return string("[Execution Statistics] not available.");
 }
 
-StatusOr<ChannelHandle> Client::CreateChannelHandleByType(
-    ChannelHandle::ChannelType type) {
+StatusOr<ChannelHandle> Client::CreateChannelHandle() {
   CreateChannelHandleRequest request;
-  request.set_channel_type(type);
   CreateChannelHandleResponse response;
 
   VLOG(1) << "making create channel handle request";
@@ -424,18 +422,6 @@ StatusOr<ChannelHandle> Client::CreateChannelHandleByType(
   }
 
   return response.channel();
-}
-
-StatusOr<ChannelHandle> Client::CreateChannelHandle() {
-  return CreateChannelHandleByType(ChannelHandle::DEVICE_TO_DEVICE);
-}
-
-StatusOr<ChannelHandle> Client::CreateHostToDeviceChannelHandle() {
-  return CreateChannelHandleByType(ChannelHandle::HOST_TO_DEVICE);
-}
-
-StatusOr<ChannelHandle> Client::CreateDeviceToHostChannelHandle() {
-  return CreateChannelHandleByType(ChannelHandle::DEVICE_TO_HOST);
 }
 
 }  // namespace xla

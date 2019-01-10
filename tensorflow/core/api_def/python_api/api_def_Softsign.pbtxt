@@ -3,7 +3,4 @@ op {
   endpoint {
     name: "nn.softsign"
   }
-  endpoint {
-    name: "math.softsign"
-  }
 }

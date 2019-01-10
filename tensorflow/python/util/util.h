@@ -118,9 +118,7 @@ PyObject* Flatten(PyObject* nested);
 // the type from the module. This approach also requires some trigger from
 // Python so that we know that Python interpreter had been initialzied.
 void RegisterSequenceClass(PyObject* sequence_class);
-// Like RegisterSequenceClass, but for collections.Mapping.
-void RegisterMappingClass(PyObject* mapping_class);
-// Similar to the above functions, except for the
+// Similar to the above function, except for the
 // sparse_tensor.SparseTensorValue class.
 void RegisterSparseTensorValueClass(PyObject* sparse_tensor_value_class);
 

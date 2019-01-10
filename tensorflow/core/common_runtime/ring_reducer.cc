@@ -163,8 +163,7 @@ void RingReducer::Run(StatusCallback done) {
     CollectiveRemoteAccessLocal::MemCpyAsync(
         ctx_->input_device_context(0), ctx_->op_device_context(), device_,
         device_, ctx_->input_alloc_attr(0), ctx_->output_alloc_attr(0), input_,
-        output_, 0 /*dev_to_dev_stream_index*/,
-        [this, &note, &status](const Status& s) {
+        output_, [this, &note, &status](const Status& s) {
           status.Update(s);
           note.Notify();
         });
@@ -388,7 +387,7 @@ void RingReducer::DispatchRecv(RingField* rf, const StatusCallback& done) {
                           col_params_.task.is_local[rf->recv_dev_idx],
                           recv_buf_key, device_, ctx_->op_device_context(),
                           ctx_->output_alloc_attr(0), dst_tensor,
-                          device_locality_, rf->subdiv_idx, done);
+                          device_locality_, done);
 }
 
 string RingReducer::FieldState() {
@@ -447,11 +446,10 @@ bool RingReducer::RunAsyncParts() {
           if (rf->do_recv) {
             rf->action = RF_RECV;
             auto requeue = [this, rf, &ready_queue, &aborted](Status s) {
-              if (!s.ok()) {
-                aborted = true;
-                StartAbort(s);
-              }
+              const bool bad_status = !s.ok();
+              if (bad_status) aborted = true;
               ready_queue.Enqueue(rf);
+              if (bad_status) StartAbort(s);
             };
             DispatchRecv(rf, requeue);
             dispatched = true;
@@ -496,11 +494,10 @@ bool RingReducer::RunAsyncParts() {
           if (rf->do_send) {
             rf->action = RF_SEND;
             auto send_complete = [this, rf, &ready_queue, &aborted](Status s) {
-              if (!s.ok()) {
-                aborted = true;
-                StartAbort(s);
-              }
+              const bool bad_status = !s.ok();
+              if (bad_status) aborted = true;
               ready_queue.Enqueue(rf);
+              if (bad_status) StartAbort(s);
             };
             DispatchSend(rf, send_complete);
             dispatched = true;
