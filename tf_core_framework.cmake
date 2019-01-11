@@ -162,8 +162,6 @@ file(GLOB_RECURSE tf_protos_cc_srcs
         "${tensorflow_source_dir}/tensorflow/core/debug/debugger_event_metadata.pb.cc"
         )
 
-add_library(tf_protos_cc ${tf_protos_cc_srcs})
-
 
 #set(PROTO_TEXT_EXE "proto_text")
 #set(tf_proto_text_srcs
@@ -201,15 +199,30 @@ add_library(tf_protos_cc ${tf_protos_cc_srcs})
 #    "tensorflow/core/util/memmapped_file_system.proto"
 #    "tensorflow/core/util/saved_tensor_slice.proto"
 #)
-
-file(GLOB_RECURSE tf_proto_text_srcs
-        "${tensorflow_source_dir}/tensorflow/core/example/example.pb.cc"
-        "${tensorflow_source_dir}/tensorflow/core/example/example.pb.h"
-        )
 #RELATIVE_PROTOBUF_TEXT_GENERATE_CPP(PROTO_TEXT_SRCS PROTO_TEXT_HDRS
 #    ${tensorflow_source_dir} ${tf_proto_text_srcs}
 #)
 
+file(GLOB_RECURSE tf_proto_text_srcs
+        "${tensorflow_source_dir}/tensorflow/core/example/example.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/example/example.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/framework/resource_handle.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/framework/resource_handle.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/framework/summary.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/framework/summary.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/framework/tensor.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/framework/tensor.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/framework/tensor_shape.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/framework/tensor_shape.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/framework/types.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/framework/types.pb.h"
+        )
+add_library(tf_protos_cc
+        ${tf_protos_cc_srcs}
+        ${tf_proto_text_srcs}
+        )
+
+#add_library(proto_text_lib ${tf_proto_text_srcs})
 
 ########################################################
 # tf_core_lib library
@@ -330,6 +343,8 @@ file(GLOB_RECURSE tf_core_framework_srcs
 )
 
 file(GLOB_RECURSE tf_core_framework_exclude_srcs
+    "${tensorflow_source_dir}/tensorflow/core/framework/*.pb.h"
+    "${tensorflow_source_dir}/tensorflow/core/framework/*.pb.cc"
     "${tensorflow_source_dir}/tensorflow/core/framework/*test*.h"
     "${tensorflow_source_dir}/tensorflow/core/framework/*test*.cc"
     "${tensorflow_source_dir}/tensorflow/core/framework/*testutil.h"
