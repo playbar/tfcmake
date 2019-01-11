@@ -94,12 +94,17 @@ foreach(tf_cc_op_lib_name ${tf_cc_op_lib_names})
 endforeach()
 
 
+file(GLOB_RECURSE tf_cc_ops_generated_src
+        "${tensorflow_source_dir}/tensorflow/cc/ops/array_ops.h"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/array_ops.cc"
+        )
+
 
 ########################################################
 # tf_cc_ops library
 ########################################################
 add_library(tf_cc_ops OBJECT
-    ${tf_cc_ops_generated_files}
+    ${tf_cc_ops_generated_src}
     "${tensorflow_source_dir}/tensorflow/cc/ops/const_op.h"
     "${tensorflow_source_dir}/tensorflow/cc/ops/const_op.cc"
     "${tensorflow_source_dir}/tensorflow/cc/ops/standard_ops.h"
