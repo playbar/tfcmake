@@ -18,6 +18,8 @@ set(tf_example_example_srcs
 
 add_executable(tf_example_example
     ${tf_example_example_srcs}
+    re2
+    $<TARGET_OBJECTS:tf_cc>
     $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>

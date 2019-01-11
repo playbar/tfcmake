@@ -16,9 +16,17 @@
 # tf_core_profiler library
 ########################################################
 file(GLOB_RECURSE tf_core_profiler_srcs
-    "${tensorflow_source_dir}/tensorflow/core/profiler/*.proto"
+#    "${tensorflow_source_dir}/tensorflow/core/profiler/*.proto"
+    "${tensorflow_source_dir}/tensorflow/core/profiler/profile.pb.h"
+    "${tensorflow_source_dir}/tensorflow/core/profiler/profile.pb.cc"
+    "${tensorflow_source_dir}/tensorflow/core/profiler/tfprof_log.pb.h"
+    "${tensorflow_source_dir}/tensorflow/core/profiler/tfprof_log.pb.cc"
     "${tensorflow_source_dir}/tensorflow/core/profiler/tfprof_options.h"
     "${tensorflow_source_dir}/tensorflow/core/profiler/tfprof_options.cc"
+    "${tensorflow_source_dir}/tensorflow/core/profiler/tfprof_options.pb.h"
+    "${tensorflow_source_dir}/tensorflow/core/profiler/tfprof_options.pb.cc"
+    "${tensorflow_source_dir}/tensorflow/core/profiler/tfprof_output.pb.h"
+    "${tensorflow_source_dir}/tensorflow/core/profiler/tfprof_output.pb.cc"
     "${tensorflow_source_dir}/tensorflow/core/profiler/internal/*.h"
     "${tensorflow_source_dir}/tensorflow/core/profiler/internal/*.cc"
     "${tensorflow_source_dir}/tensorflow/core/profiler/internal/advisor/*.h"

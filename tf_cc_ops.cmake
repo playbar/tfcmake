@@ -97,6 +97,8 @@ endforeach()
 file(GLOB_RECURSE tf_cc_ops_generated_src
         "${tensorflow_source_dir}/tensorflow/cc/ops/array_ops.h"
         "${tensorflow_source_dir}/tensorflow/cc/ops/array_ops.cc"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/math_ops.h"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/math_ops.cc"
         )
 
 
