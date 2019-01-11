@@ -290,6 +290,8 @@ file(GLOB_RECURSE tf_proto_text_srcs
         "${tensorflow_source_dir}/tensorflow/core/protobuf/saver.pb.cc"
         "${tensorflow_source_dir}/tensorflow/core/protobuf/tensor_bundle.pb.h"
         "${tensorflow_source_dir}/tensorflow/core/protobuf/tensor_bundle.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/protobuf/tensorflow_server.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/protobuf/tensorflow_server.pb.cc"
         "${tensorflow_source_dir}/tensorflow/core/util/test_log.pb.h"
         "${tensorflow_source_dir}/tensorflow/core/util/test_log.pb.cc"
         )
