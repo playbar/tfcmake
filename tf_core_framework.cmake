@@ -123,68 +123,87 @@ endfunction()
 # tf_protos_cc library
 ########################################################
 
-file(GLOB_RECURSE tf_protos_cc_srcs RELATIVE ${tensorflow_source_dir}
-    "${tensorflow_source_dir}/tensorflow/core/*.proto"
-    "${tensorflow_source_dir}/tensorflow/contrib/boosted_trees/proto/*.proto"
-    "${tensorflow_source_dir}/tensorflow/contrib/tpu/proto/*.proto"
-)
+#file(GLOB_RECURSE tf_protos_cc_srcs RELATIVE ${tensorflow_source_dir}
+#    "${tensorflow_source_dir}/tensorflow/core/*.proto"
+#    "${tensorflow_source_dir}/tensorflow/contrib/boosted_trees/proto/*.proto"
+#    "${tensorflow_source_dir}/tensorflow/contrib/tpu/proto/*.proto"
+#)
+#
+#RELATIVE_PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS
+#    ${tensorflow_source_dir} ${tf_protos_cc_srcs}
+#)
 
-RELATIVE_PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS
-    ${tensorflow_source_dir} ${tf_protos_cc_srcs}
-)
+#
+#if(WIN32)
+#  add_library(tf_protos_cc ${PROTO_SRCS} ${PROTO_HDRS})
+#else()
+#  file(GLOB_RECURSE tf_protos_grpc_cc_srcs RELATIVE ${tensorflow_source_dir}
+#      "${tensorflow_source_dir}/tensorflow/core/debug/*.proto"
+#  )
+#  RELATIVE_PROTOBUF_GENERATE_GRPC_CPP(PROTO_GRPC_SRCS PROTO_GRPC_HDRS
+#      ${tensorflow_source_dir} ${tf_protos_grpc_cc_srcs}
+#  )
+#  add_library(tf_protos_cc ${PROTO_GRPC_SRCS} ${PROTO_GRPC_HDRS} ${PROTO_SRCS} ${PROTO_HDRS})
+#endif()
 
 
-set(PROTO_TEXT_EXE "proto_text")
-set(tf_proto_text_srcs
-    "tensorflow/core/example/example.proto"
-    "tensorflow/core/example/feature.proto"
-    "tensorflow/core/framework/allocation_description.proto"
-    "tensorflow/core/framework/attr_value.proto"
-    "tensorflow/core/framework/cost_graph.proto"
-    "tensorflow/core/framework/device_attributes.proto"
-    "tensorflow/core/framework/function.proto"
-    "tensorflow/core/framework/graph.proto"
-    "tensorflow/core/framework/graph_transfer_info.proto"
-    "tensorflow/core/framework/kernel_def.proto"
-    "tensorflow/core/framework/log_memory.proto"
-    "tensorflow/core/framework/node_def.proto"
-    "tensorflow/core/framework/op_def.proto"
-    "tensorflow/core/framework/remote_fused_graph_execute_info.proto"
-    "tensorflow/core/framework/resource_handle.proto"
-    "tensorflow/core/framework/step_stats.proto"
-    "tensorflow/core/framework/summary.proto"
-    "tensorflow/core/framework/tensor.proto"
-    "tensorflow/core/framework/tensor_description.proto"
-    "tensorflow/core/framework/tensor_shape.proto"
-    "tensorflow/core/framework/tensor_slice.proto"
-    "tensorflow/core/framework/types.proto"
-    "tensorflow/core/framework/versions.proto"
-    "tensorflow/core/lib/core/error_codes.proto"
-    "tensorflow/core/protobuf/cluster.proto"
-    "tensorflow/core/protobuf/config.proto"
-    "tensorflow/core/protobuf/debug.proto"
-    "tensorflow/core/protobuf/device_properties.proto"
-    "tensorflow/core/protobuf/rewriter_config.proto"
-    "tensorflow/core/protobuf/tensor_bundle.proto"
-    "tensorflow/core/protobuf/saver.proto"
-    "tensorflow/core/util/memmapped_file_system.proto"
-    "tensorflow/core/util/saved_tensor_slice.proto"
-)
-RELATIVE_PROTOBUF_TEXT_GENERATE_CPP(PROTO_TEXT_SRCS PROTO_TEXT_HDRS
-    ${tensorflow_source_dir} ${tf_proto_text_srcs}
-)
+file(GLOB_RECURSE tf_protos_cc_srcs
+        "${tensorflow_source_dir}/tensorflow/contrib/boosted_trees/proto/*.h"
+        "${tensorflow_source_dir}/tensorflow/contrib/boosted_trees/proto/*.cc"
+        "${tensorflow_source_dir}/tensorflow/contrib/tpu/proto/*.h"
+        "${tensorflow_source_dir}/tensorflow/contrib/tpu/proto/*.cc"
+        "${tensorflow_source_dir}/tensorflow/core/debug/*.h"
+        "${tensorflow_source_dir}/tensorflow/core/debug/*.cc"
+        )
 
-if(WIN32)
-  add_library(tf_protos_cc ${PROTO_SRCS} ${PROTO_HDRS})
-else()
-  file(GLOB_RECURSE tf_protos_grpc_cc_srcs RELATIVE ${tensorflow_source_dir}
-      "${tensorflow_source_dir}/tensorflow/core/debug/*.proto"
-  )
-  RELATIVE_PROTOBUF_GENERATE_GRPC_CPP(PROTO_GRPC_SRCS PROTO_GRPC_HDRS
-      ${tensorflow_source_dir} ${tf_protos_grpc_cc_srcs}
-  )
-  add_library(tf_protos_cc ${PROTO_GRPC_SRCS} ${PROTO_GRPC_HDRS} ${PROTO_SRCS} ${PROTO_HDRS})
-endif()
+add_library(tf_protos_cc ${tf_protos_cc_srcs})
+
+
+#set(PROTO_TEXT_EXE "proto_text")
+#set(tf_proto_text_srcs
+#    "tensorflow/core/example/example.proto"
+#    "tensorflow/core/example/feature.proto"
+#    "tensorflow/core/framework/allocation_description.proto"
+#    "tensorflow/core/framework/attr_value.proto"
+#    "tensorflow/core/framework/cost_graph.proto"
+#    "tensorflow/core/framework/device_attributes.proto"
+#    "tensorflow/core/framework/function.proto"
+#    "tensorflow/core/framework/graph.proto"
+#    "tensorflow/core/framework/graph_transfer_info.proto"
+#    "tensorflow/core/framework/kernel_def.proto"
+#    "tensorflow/core/framework/log_memory.proto"
+#    "tensorflow/core/framework/node_def.proto"
+#    "tensorflow/core/framework/op_def.proto"
+#    "tensorflow/core/framework/remote_fused_graph_execute_info.proto"
+#    "tensorflow/core/framework/resource_handle.proto"
+#    "tensorflow/core/framework/step_stats.proto"
+#    "tensorflow/core/framework/summary.proto"
+#    "tensorflow/core/framework/tensor.proto"
+#    "tensorflow/core/framework/tensor_description.proto"
+#    "tensorflow/core/framework/tensor_shape.proto"
+#    "tensorflow/core/framework/tensor_slice.proto"
+#    "tensorflow/core/framework/types.proto"
+#    "tensorflow/core/framework/versions.proto"
+#    "tensorflow/core/lib/core/error_codes.proto"
+#    "tensorflow/core/protobuf/cluster.proto"
+#    "tensorflow/core/protobuf/config.proto"
+#    "tensorflow/core/protobuf/debug.proto"
+#    "tensorflow/core/protobuf/device_properties.proto"
+#    "tensorflow/core/protobuf/rewriter_config.proto"
+#    "tensorflow/core/protobuf/tensor_bundle.proto"
+#    "tensorflow/core/protobuf/saver.proto"
+#    "tensorflow/core/util/memmapped_file_system.proto"
+#    "tensorflow/core/util/saved_tensor_slice.proto"
+#)
+
+file(GLOB_RECURSE tf_proto_text_srcs
+        "${tensorflow_source_dir}/tensorflow/core/example/example.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/example/example.pb.h"
+        )
+#RELATIVE_PROTOBUF_TEXT_GENERATE_CPP(PROTO_TEXT_SRCS PROTO_TEXT_HDRS
+#    ${tensorflow_source_dir} ${tf_proto_text_srcs}
+#)
+
 
 ########################################################
 # tf_core_lib library
@@ -329,8 +348,10 @@ list(REMOVE_ITEM tf_core_framework_srcs ${tf_core_framework_exclude_srcs})
 add_library(tf_core_framework OBJECT
     ${tf_core_framework_srcs}
     ${tf_version_srcs}
-    ${PROTO_TEXT_HDRS}
-    ${PROTO_TEXT_SRCS})
+    ${tf_proto_text_srcs}
+#    ${PROTO_TEXT_HDRS}
+#    ${PROTO_TEXT_SRCS}
+        )
 add_dependencies(tf_core_framework
     tf_core_lib
     proto_text
