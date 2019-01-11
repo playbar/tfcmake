@@ -152,8 +152,14 @@ file(GLOB_RECURSE tf_protos_cc_srcs
         "${tensorflow_source_dir}/tensorflow/contrib/boosted_trees/proto/*.cc"
         "${tensorflow_source_dir}/tensorflow/contrib/tpu/proto/*.h"
         "${tensorflow_source_dir}/tensorflow/contrib/tpu/proto/*.cc"
-        "${tensorflow_source_dir}/tensorflow/core/debug/*.h"
-        "${tensorflow_source_dir}/tensorflow/core/debug/*.cc"
+        "${tensorflow_source_dir}/tensorflow/core/debug/debug_service.grpc.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/debug/debug_service.grpc.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/debug/debug_service.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/debug/debug_service.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/debug/debugger_event_metadata.grpc.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/debug/debugger_event_metadata.grpc.pb.cc"
+        "${tensorflow_source_dir}/tensorflow/core/debug/debugger_event_metadata.pb.h"
+        "${tensorflow_source_dir}/tensorflow/core/debug/debugger_event_metadata.pb.cc"
         )
 
 add_library(tf_protos_cc ${tf_protos_cc_srcs})
