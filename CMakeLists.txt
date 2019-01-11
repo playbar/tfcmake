@@ -218,8 +218,8 @@ include(fft2d)
 include(highwayhash)
 include(nsync)
 include(protobuf)
-include(re2)
-#add_subdirectory(third_party/re2)
+#include(re2)
+add_subdirectory(third_party/re2)
 include(cub)
 include(sqlite)
 include(double_conversion)
@@ -297,7 +297,8 @@ include_directories(
     ${cub_INCLUDE_DIR}
     ${nsync_INCLUDE_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
-    ${re2_INCLUDE_DIR}
+#    ${re2_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/re2
     ${sqlite_INCLUDE_DIR}
     ${double_conversion_INCLUDE_DIR}
 )
