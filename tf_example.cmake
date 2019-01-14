@@ -18,7 +18,6 @@ set(tf_example_example_srcs
 
 add_executable(tf_example_example
     ${tf_example_example_srcs}
-    re2
     $<TARGET_OBJECTS:tf_c>
     $<TARGET_OBJECTS:tf_cc>
     $<TARGET_OBJECTS:tf_core_lib>
@@ -38,6 +37,7 @@ add_executable(tf_example_example
 
 target_link_libraries(tf_example_example PUBLIC
     tf_protos_cc
+    re2
     ${tf_core_gpu_kernels_lib}
     ${tensorflow_EXTERNAL_LIBRARIES}
 )
