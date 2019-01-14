@@ -570,7 +570,7 @@ endif(WIN32)
 # tf_python/tensorflow/python/.
 add_library(pywrap_tensorflow_internal SHARED
     ${pywrap_tensorflow_internal_src}
-    $<TARGET_OBJECTS:tf_c>
+#    $<TARGET_OBJECTS:tf_c>
     $<TARGET_OBJECTS:tf_c_python_api>
     $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
@@ -608,6 +608,7 @@ target_include_directories(pywrap_tensorflow_internal PUBLIC
 target_link_libraries(pywrap_tensorflow_internal PRIVATE
     ${tf_core_gpu_kernels_lib}
     ${tensorflow_EXTERNAL_LIBRARIES}
+    tf_c
     tf_protos_cc
     tf_python_protos_cc
     ${PYTHON_LIBRARIES}

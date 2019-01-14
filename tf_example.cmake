@@ -18,7 +18,7 @@ set(tf_example_example_srcs
 
 add_executable(tf_example_example
     ${tf_example_example_srcs}
-    $<TARGET_OBJECTS:tf_c>
+#    $<TARGET_OBJECTS:tf_c>
     $<TARGET_OBJECTS:tf_cc>
     $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
@@ -28,16 +28,16 @@ add_executable(tf_example_example
     $<TARGET_OBJECTS:tf_cc_ops>
     $<TARGET_OBJECTS:tf_core_profiler>
     $<TARGET_OBJECTS:tf_cc_while_loop>
-    $<TARGET_OBJECTS:tf_core_kernels>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_distributed_runtime>
     $<TARGET_OBJECTS:tf_core_direct_session>
-    $<$<BOOL:${tensorflow_ENABLE_GPU}>:$<TARGET_OBJECTS:tf_stream_executor>>
 )
 
 target_link_libraries(tf_example_example PUBLIC
     tf_protos_cc
+    tf_c
     re2
+    ${tf_core_kernels}
     ${tf_core_gpu_kernels_lib}
     ${tensorflow_EXTERNAL_LIBRARIES}
 )
@@ -58,7 +58,6 @@ add_executable(tf_example_trainmodel
         $<TARGET_OBJECTS:tf_cc_ops>
         $<TARGET_OBJECTS:tf_core_ops>
         $<TARGET_OBJECTS:tf_core_direct_session>
-        $<$<BOOL:${tensorflow_ENABLE_GPU}>:$<TARGET_OBJECTS:tf_stream_executor>>
         )
 
 target_link_libraries(tf_example_trainmodel PUBLIC

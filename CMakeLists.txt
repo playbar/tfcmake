@@ -23,7 +23,7 @@ cmake_policy(SET CMP0022 NEW)
 
 # Options
 option(tensorflow_VERBOSE "Enable for verbose output" OFF)
-option(tensorflow_ENABLE_SSL_SUPPORT "Enable boringssl support" OFF)
+option(tensorflow_ENABLE_SSL_SUPPORT "Enable boringssl support" ON)
 option(tensorflow_ENABLE_GRPC_SUPPORT "Enable gRPC support" ON)
 option(tensorflow_ENABLE_HDFS_SUPPORT "Enable HDFS support" OFF)
 option(tensorflow_ENABLE_JEMALLOC_SUPPORT "Enable jemalloc support" OFF)
@@ -235,6 +235,7 @@ set(tensorflow_EXTERNAL_LIBRARIES
     ${gif_STATIC_LIBRARIES}
 #    ${png_STATIC_LIBRARIES}
     png
+    curl
     ${jpeg_STATIC_LIBRARIES}
     ${lmdb_STATIC_LIBRARIES}
     ${jsoncpp_STATIC_LIBRARIES}
