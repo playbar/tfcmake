@@ -207,7 +207,8 @@ endif()
 include(zlib)
 #add_subdirectory(third_party/zlib)
 include(gif)
-include(png)
+#include(png)
+add_subdirectory(third_party/png)
 include(jpeg)
 include(lmdb)
 include(eigen)
@@ -232,7 +233,8 @@ link_directories(${ADD_LINK_DIRECTORY})
 
 set(tensorflow_EXTERNAL_LIBRARIES
     ${gif_STATIC_LIBRARIES}
-    ${png_STATIC_LIBRARIES}
+#    ${png_STATIC_LIBRARIES}
+    png
     ${jpeg_STATIC_LIBRARIES}
     ${lmdb_STATIC_LIBRARIES}
     ${jsoncpp_STATIC_LIBRARIES}
@@ -262,7 +264,7 @@ set(tensorflow_EXTERNAL_DEPENDENCIES
 #    ${CMAKE_SOURCE_DIR}/third_party/zlib
     zlib_copy_headers_to_destination
     gif_copy_headers_to_destination
-    png_copy_headers_to_destination
+#    png_copy_headers_to_destination
     jpeg_copy_headers_to_destination
     lmdb_copy_headers_to_destination
     jsoncpp
