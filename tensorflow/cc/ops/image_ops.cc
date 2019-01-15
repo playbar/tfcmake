@@ -19,8 +19,7 @@ AdjustContrast::AdjustContrast(const ::tensorflow::Scope& scope,
   const auto unique_name = scope.GetUniqueNameForOp("AdjustContrast");
   auto builder = ::tensorflow::NodeBuilder(unique_name, "AdjustContrastv2")
                      .Input(_images)
-                     .Input(_contrast_factor)
-  ;
+                     .Input(_contrast_factor);
   scope.UpdateBuilder(&builder);
   scope.UpdateStatus(builder.Finalize(scope.graph(), &ret));
   if (!scope.ok()) return;
