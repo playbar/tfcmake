@@ -24,12 +24,13 @@ set(proto_text "proto_text")
 
 add_executable(${proto_text}
     ${tf_tools_proto_text_srcs}
-    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_lib>
 )
 
 target_link_libraries(${proto_text} PUBLIC
-  ${tensorflow_EXTERNAL_LIBRARIES}
-  tf_protos_cc
+        ${tensorflow_EXTERNAL_LIBRARIES}
+        tf_protos_cc
+        tf_core_lib
 )
 
 add_dependencies(${proto_text} tf_core_lib)
@@ -63,7 +64,7 @@ set(transform_graph "transform_graph")
 add_executable(${transform_graph}
     "${tensorflow_source_dir}/tensorflow/tools/graph_transforms/transform_graph_main.cc"
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
-    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
@@ -85,7 +86,7 @@ set(summarize_graph "summarize_graph")
 add_executable(${summarize_graph}
     "${tensorflow_source_dir}/tensorflow/tools/graph_transforms/summarize_graph_main.cc"
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
-    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
@@ -97,9 +98,10 @@ add_executable(${summarize_graph}
 )
 
 target_link_libraries(${summarize_graph} PUBLIC
-  tf_protos_cc
-  ${tf_core_gpu_kernels_lib}
-  ${tensorflow_EXTERNAL_LIBRARIES}
+        tf_protos_cc
+        tf_core_lib
+        ${tf_core_gpu_kernels_lib}
+        ${tensorflow_EXTERNAL_LIBRARIES}
 )
 
 set(compare_graphs "compare_graphs")
@@ -107,7 +109,7 @@ set(compare_graphs "compare_graphs")
 add_executable(${compare_graphs}
     "${tensorflow_source_dir}/tensorflow/tools/graph_transforms/compare_graphs.cc"
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
-    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
@@ -119,9 +121,10 @@ add_executable(${compare_graphs}
 )
 
 target_link_libraries(${compare_graphs} PUBLIC
-  tf_protos_cc
-  ${tf_core_gpu_kernels_lib}
-  ${tensorflow_EXTERNAL_LIBRARIES}
+        tf_protos_cc
+        tf_core_lib
+        ${tf_core_gpu_kernels_lib}
+        ${tensorflow_EXTERNAL_LIBRARIES}
 )
 
 set(benchmark_model "benchmark_model")
@@ -129,7 +132,7 @@ set(benchmark_model "benchmark_model")
 add_executable(${benchmark_model}
     "${tensorflow_source_dir}/tensorflow/tools/benchmark/benchmark_model.cc"
     "${tensorflow_source_dir}/tensorflow/tools/benchmark/benchmark_model_main.cc"
-    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
@@ -140,9 +143,10 @@ add_executable(${benchmark_model}
 )
 
 target_link_libraries(${benchmark_model} PUBLIC
-  tf_protos_cc
-  ${tf_core_gpu_kernels_lib}
-  ${tensorflow_EXTERNAL_LIBRARIES}
+        tf_protos_cc
+        tf_core_lib
+        ${tf_core_gpu_kernels_lib}
+        ${tensorflow_EXTERNAL_LIBRARIES}
 )
 
 install(TARGETS ${transform_graph} ${summarize_graph} ${compare_graphs} ${benchmark_model}

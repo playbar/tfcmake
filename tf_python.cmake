@@ -291,13 +291,14 @@ function(GENERATE_PYTHON_OP_LIB tf_python_op_lib_name)
     add_executable(${tf_python_op_lib_name}_gen_python
         $<TARGET_OBJECTS:tf_python_op_gen_main>
         $<TARGET_OBJECTS:tf_${tf_python_op_lib_name}>
-        $<TARGET_OBJECTS:tf_core_lib>
+#        $<TARGET_OBJECTS:tf_core_lib>
         $<TARGET_OBJECTS:tf_core_framework>
         ${GENERATE_PYTHON_OP_LIB_ADDITIONAL_LIBRARIES}
     )
     target_link_libraries(${tf_python_op_lib_name}_gen_python PRIVATE
         tf_protos_cc
-				tf_python_protos_cc
+        tf_core_lib
+        tf_python_protos_cc
         ${tensorflow_EXTERNAL_LIBRARIES}
     )
 
@@ -515,7 +516,7 @@ if(WIN32)
         ${pywrap_tensorflow_internal_src}
         $<TARGET_OBJECTS:tf_c>
         $<TARGET_OBJECTS:tf_c_python_api>
-        $<TARGET_OBJECTS:tf_core_lib>
+#        $<TARGET_OBJECTS:tf_core_lib>
         $<TARGET_OBJECTS:tf_core_cpu>
         $<TARGET_OBJECTS:tf_core_framework>
         $<TARGET_OBJECTS:tf_core_profiler>
@@ -572,7 +573,7 @@ add_library(pywrap_tensorflow_internal SHARED
     ${pywrap_tensorflow_internal_src}
 #    $<TARGET_OBJECTS:tf_c>
     $<TARGET_OBJECTS:tf_c_python_api>
-    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_profiler>

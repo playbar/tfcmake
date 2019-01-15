@@ -18,7 +18,7 @@ set(tf_tutorials_example_trainer_srcs
 
 add_executable(tf_tutorials_example_trainer
     ${tf_tutorials_example_trainer_srcs}
-    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_kernels>
@@ -31,6 +31,7 @@ add_executable(tf_tutorials_example_trainer
 
 target_link_libraries(tf_tutorials_example_trainer PUBLIC
     tf_protos_cc
+    tf_core_lib
     ${tf_core_gpu_kernels_lib}
     ${tensorflow_EXTERNAL_LIBRARIES}
 )

@@ -303,10 +303,13 @@ file(GLOB_RECURSE tf_proto_text_srcs
         "${tensorflow_source_dir}/tensorflow/core/util/test_log.pb.h"
         "${tensorflow_source_dir}/tensorflow/core/util/test_log.pb.cc"
         )
-add_library(tf_protos_cc
+add_library(tf_protos_cc STATIC
         ${tf_protos_cc_srcs}
         ${tf_proto_text_srcs}
         )
+#add_dependencies(tf_protos_cc
+#        protobuf
+#        )
 
 #add_library(proto_text_lib ${tf_proto_text_srcs})
 
@@ -383,8 +386,10 @@ file(GLOB_RECURSE tf_core_lib_test_srcs
 )
 list(REMOVE_ITEM tf_core_lib_srcs ${tf_core_lib_test_srcs})
 
-add_library(tf_core_lib OBJECT ${tf_core_lib_srcs})
-add_dependencies(tf_core_lib ${tensorflow_EXTERNAL_DEPENDENCIES} tf_protos_cc)
+add_library(tf_core_lib STATIC
+        ${tf_core_lib_srcs})
+
+#add_dependencies(tf_core_lib ${tensorflow_EXTERNAL_DEPENDENCIES} tf_protos_cc)
 
 # Tricky setup to force always rebuilding
 # force_rebuild always runs forcing ${VERSION_INFO_CC} target to run

@@ -64,12 +64,13 @@ foreach(tf_cc_op_lib_name ${tf_cc_op_lib_names})
     add_executable(${tf_cc_op_lib_name}_gen_cc
         $<TARGET_OBJECTS:tf_cc_op_gen_main>
         $<TARGET_OBJECTS:tf_${tf_cc_op_lib_name}>
-        $<TARGET_OBJECTS:tf_core_lib>
+#        $<TARGET_OBJECTS:tf_core_lib>
         $<TARGET_OBJECTS:tf_core_framework>
     )
 
     target_link_libraries(${tf_cc_op_lib_name}_gen_cc PRIVATE
         tf_protos_cc
+            tf_core_lib
         ${tensorflow_EXTERNAL_LIBRARIES}
     )
 

@@ -18,7 +18,7 @@ set(tf_label_image_example_srcs
 
 add_executable(tf_label_image_example
     ${tf_label_image_example_srcs}
-    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
     $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_kernels>
@@ -31,6 +31,7 @@ add_executable(tf_label_image_example
 
 target_link_libraries(tf_label_image_example PUBLIC
     tf_protos_cc
+    tf_core_lib
     ${tf_core_gpu_kernels_lib}
     ${tensorflow_EXTERNAL_LIBRARIES}
 )
