@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/mywork/github/tfcmake/cmake-build-debug/grpc/src/grpc/third_party/protobuf/src/google/protobuf/compiler/js/embed.cc
+cassert
+-
+cstdlib
+-
+fstream
+-
+iostream
+-
+string
+-
+
