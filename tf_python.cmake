@@ -577,7 +577,7 @@ add_library(pywrap_tensorflow_internal SHARED
 #    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
 #    $<TARGET_OBJECTS:tf_core_framework>
-    $<TARGET_OBJECTS:tf_core_profiler>
+#    $<TARGET_OBJECTS:tf_core_profiler>
 #    $<TARGET_OBJECTS:tf_cc>
 #    $<TARGET_OBJECTS:tf_cc_ops>
     $<TARGET_OBJECTS:tf_cc_while_loop>
@@ -615,6 +615,7 @@ target_link_libraries(pywrap_tensorflow_internal PRIVATE
     tf_cc_ops
     tf_core_framework
     tf_protos_cc
+    tf_core_profiler
     tf_python_protos_cc
     ${PYTHON_LIBRARIES}
 )
