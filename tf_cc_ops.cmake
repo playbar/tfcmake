@@ -23,7 +23,7 @@ set(tf_cc_framework_srcs
     "${tensorflow_source_dir}/tensorflow/cc/framework/scope.cc"
 )
 
-add_library(tf_cc_framework OBJECT ${tf_cc_framework_srcs})
+add_library(tf_cc_framework STATIC ${tf_cc_framework_srcs})
 
 add_dependencies(tf_cc_framework tf_core_framework)
 
@@ -65,12 +65,13 @@ foreach(tf_cc_op_lib_name ${tf_cc_op_lib_names})
         $<TARGET_OBJECTS:tf_cc_op_gen_main>
         $<TARGET_OBJECTS:tf_${tf_cc_op_lib_name}>
 #        $<TARGET_OBJECTS:tf_core_lib>
-        $<TARGET_OBJECTS:tf_core_framework>
+#        $<TARGET_OBJECTS:tf_core_framework>
     )
 
     target_link_libraries(${tf_cc_op_lib_name}_gen_cc PRIVATE
         tf_protos_cc
-            tf_core_lib
+        tf_core_lib
+        tf_core_framework
         ${tensorflow_EXTERNAL_LIBRARIES}
     )
 
@@ -120,7 +121,7 @@ file(GLOB_RECURSE tf_cc_ops_generated_src
 ########################################################
 # tf_cc_ops library
 ########################################################
-add_library(tf_cc_ops OBJECT
+add_library(tf_cc_ops STATIC
     ${tf_cc_ops_generated_src}
     "${tensorflow_source_dir}/tensorflow/cc/ops/const_op.h"
     "${tensorflow_source_dir}/tensorflow/cc/ops/const_op.cc"
@@ -167,7 +168,7 @@ file(GLOB_RECURSE tf_cc_test_srcs
 
 list(REMOVE_ITEM tf_cc_srcs ${tf_cc_test_srcs})
 
-add_library(tf_cc OBJECT ${tf_cc_srcs})
+add_library(tf_cc STATIC ${tf_cc_srcs})
 add_dependencies(tf_cc tf_cc_framework tf_cc_ops)
 
 if (WIN32)

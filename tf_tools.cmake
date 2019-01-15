@@ -66,7 +66,7 @@ add_executable(${transform_graph}
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
 #    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
-    $<TARGET_OBJECTS:tf_core_framework>
+#    $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_direct_session>
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
@@ -76,9 +76,10 @@ add_executable(${transform_graph}
 )
 
 target_link_libraries(${transform_graph} PUBLIC
-  tf_protos_cc
-  ${tf_core_gpu_kernels_lib}
-  ${tensorflow_EXTERNAL_LIBRARIES}
+        tf_protos_cc
+        tf_core_framework
+        ${tf_core_gpu_kernels_lib}
+        ${tensorflow_EXTERNAL_LIBRARIES}
 )
 
 set(summarize_graph "summarize_graph")
@@ -88,7 +89,7 @@ add_executable(${summarize_graph}
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
 #    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
-    $<TARGET_OBJECTS:tf_core_framework>
+#    $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_direct_session>
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
@@ -100,6 +101,7 @@ add_executable(${summarize_graph}
 target_link_libraries(${summarize_graph} PUBLIC
         tf_protos_cc
         tf_core_lib
+        tf_core_framework
         ${tf_core_gpu_kernels_lib}
         ${tensorflow_EXTERNAL_LIBRARIES}
 )
@@ -111,7 +113,7 @@ add_executable(${compare_graphs}
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
 #    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
-    $<TARGET_OBJECTS:tf_core_framework>
+#    $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_direct_session>
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
@@ -123,6 +125,7 @@ add_executable(${compare_graphs}
 target_link_libraries(${compare_graphs} PUBLIC
         tf_protos_cc
         tf_core_lib
+        tf_core_framework
         ${tf_core_gpu_kernels_lib}
         ${tensorflow_EXTERNAL_LIBRARIES}
 )
@@ -134,7 +137,7 @@ add_executable(${benchmark_model}
     "${tensorflow_source_dir}/tensorflow/tools/benchmark/benchmark_model_main.cc"
 #    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
-    $<TARGET_OBJECTS:tf_core_framework>
+#    $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_direct_session>
     $<TARGET_OBJECTS:tf_core_kernels>
@@ -145,6 +148,7 @@ add_executable(${benchmark_model}
 target_link_libraries(${benchmark_model} PUBLIC
         tf_protos_cc
         tf_core_lib
+        tf_core_framework
         ${tf_core_gpu_kernels_lib}
         ${tensorflow_EXTERNAL_LIBRARIES}
 )

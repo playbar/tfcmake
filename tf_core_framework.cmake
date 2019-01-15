@@ -457,7 +457,7 @@ file(GLOB_RECURSE tf_core_framework_exclude_srcs
 
 list(REMOVE_ITEM tf_core_framework_srcs ${tf_core_framework_exclude_srcs})
 
-add_library(tf_core_framework OBJECT
+add_library(tf_core_framework STATIC
     ${tf_core_framework_srcs}
     ${tf_version_srcs}
     ${tf_proto_text_srcs}

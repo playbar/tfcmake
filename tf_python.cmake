@@ -292,12 +292,13 @@ function(GENERATE_PYTHON_OP_LIB tf_python_op_lib_name)
         $<TARGET_OBJECTS:tf_python_op_gen_main>
         $<TARGET_OBJECTS:tf_${tf_python_op_lib_name}>
 #        $<TARGET_OBJECTS:tf_core_lib>
-        $<TARGET_OBJECTS:tf_core_framework>
+#        $<TARGET_OBJECTS:tf_core_framework>
         ${GENERATE_PYTHON_OP_LIB_ADDITIONAL_LIBRARIES}
     )
     target_link_libraries(${tf_python_op_lib_name}_gen_python PRIVATE
         tf_protos_cc
         tf_core_lib
+        tf_core_framework
         tf_python_protos_cc
         ${tensorflow_EXTERNAL_LIBRARIES}
     )
@@ -575,10 +576,10 @@ add_library(pywrap_tensorflow_internal SHARED
     $<TARGET_OBJECTS:tf_c_python_api>
 #    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
-    $<TARGET_OBJECTS:tf_core_framework>
+#    $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_profiler>
-    $<TARGET_OBJECTS:tf_cc>
-    $<TARGET_OBJECTS:tf_cc_ops>
+#    $<TARGET_OBJECTS:tf_cc>
+#    $<TARGET_OBJECTS:tf_cc_ops>
     $<TARGET_OBJECTS:tf_cc_while_loop>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_direct_session>
@@ -610,6 +611,9 @@ target_link_libraries(pywrap_tensorflow_internal PRIVATE
     ${tf_core_gpu_kernels_lib}
     ${tensorflow_EXTERNAL_LIBRARIES}
     tf_c
+    tf_cc
+    tf_cc_ops
+    tf_core_framework
     tf_protos_cc
     tf_python_protos_cc
     ${PYTHON_LIBRARIES}
