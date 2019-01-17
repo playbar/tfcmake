@@ -16,8 +16,6 @@ __pycache__
 cmake_build/
 .idea/**
 /build/
-/tensorflow/core/util/version_info.cc
-/tensorflow/python/framework/fast_tensor_util.cpp
 Pods
 Podfile.lock
 *.pbxproj
