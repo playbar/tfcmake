@@ -95,6 +95,11 @@ target_link_libraries(tensorflow PRIVATE
     tf_core_profiler
     ${tensorflow_EXTERNAL_LIBRARIES}
     tf_protos_cc
+#    grpc++_unsecure
+#    grpc_unsecure
+#    address_sorting
+#    cares
+#    gpr
 )
 
 # There is a bug in GCC 5 resulting in undefined reference to a __cpu_model function when
