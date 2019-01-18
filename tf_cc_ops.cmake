@@ -107,6 +107,10 @@ file(GLOB_RECURSE tf_cc_ops_generated_src
         "${tensorflow_source_dir}/tensorflow/cc/ops/control_flow_ops_internal.cc"
         "${tensorflow_source_dir}/tensorflow/cc/ops/data_flow_ops.h"
         "${tensorflow_source_dir}/tensorflow/cc/ops/data_flow_ops.cc"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/image_ops.h"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/image_ops.cc"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/io_ops.h"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/io_ops.cc"
         "${tensorflow_source_dir}/tensorflow/cc/ops/math_ops.h"
         "${tensorflow_source_dir}/tensorflow/cc/ops/math_ops.cc"
         "${tensorflow_source_dir}/tensorflow/cc/ops/math_ops_internal.h"
@@ -117,6 +121,10 @@ file(GLOB_RECURSE tf_cc_ops_generated_src
         "${tensorflow_source_dir}/tensorflow/cc/ops/nn_ops_internal.cc"
         "${tensorflow_source_dir}/tensorflow/cc/ops/random_ops.h"
         "${tensorflow_source_dir}/tensorflow/cc/ops/random_ops.cc"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/state_ops.h"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/state_ops.cc"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/training_ops.h"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/training_ops.cc"
         )
 
 
