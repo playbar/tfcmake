@@ -14,9 +14,9 @@
 # ==============================================================================
 
 set(tf_example_image_classify_srcs
-        "${CMAKE_SOURCE_DIR}/example/image_classify/src/dataset.cc"
-        "${CMAKE_SOURCE_DIR}/example/image_classify/src/image_classifier.cc"
-        "${CMAKE_SOURCE_DIR}/example/image_classify/src/main.cc"
+        "${CMAKE_SOURCE_DIR}/example/image_classify/dataset.cc"
+        "${CMAKE_SOURCE_DIR}/example/image_classify/image_classifier.cc"
+        "${CMAKE_SOURCE_DIR}/example/image_classify/main.cc"
         )
 
 add_executable(tf_example_image_classify
@@ -31,7 +31,7 @@ target_link_libraries(tf_example_image_classify PUBLIC
         )
 
 target_include_directories(tf_example_image_classify PUBLIC
-        ${CMAKE_SOURCE_DIR}/example/image_classify/src
+        ${CMAKE_SOURCE_DIR}/example/image_classify
 )
 
 ##########
