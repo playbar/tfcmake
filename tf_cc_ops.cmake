@@ -115,6 +115,8 @@ file(GLOB_RECURSE tf_cc_ops_generated_src
         "${tensorflow_source_dir}/tensorflow/cc/ops/nn_ops.cc"
         "${tensorflow_source_dir}/tensorflow/cc/ops/nn_ops_internal.h"
         "${tensorflow_source_dir}/tensorflow/cc/ops/nn_ops_internal.cc"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/random_ops.h"
+        "${tensorflow_source_dir}/tensorflow/cc/ops/random_ops.cc"
         )
 
 

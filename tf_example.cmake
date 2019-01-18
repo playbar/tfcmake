@@ -13,6 +13,28 @@
 # limitations under the License.
 # ==============================================================================
 
+set(tf_example_image_classify_srcs
+        "${CMAKE_SOURCE_DIR}/example/image_classify/src/dataset.cc"
+        "${CMAKE_SOURCE_DIR}/example/image_classify/src/image_classifier.cc"
+        "${CMAKE_SOURCE_DIR}/example/image_classify/src/main.cc"
+        )
+
+add_executable(tf_example_image_classify
+        ${tf_example_image_classify_srcs}
+        )
+
+target_link_libraries(tf_example_image_classify PUBLIC
+        tensorflow
+        tf_cc
+        tf_cc_ops
+        #        ${tensorflow_EXTERNAL_LIBRARIES}
+        )
+
+target_include_directories(tf_example_image_classify PUBLIC
+        ${CMAKE_SOURCE_DIR}/example/image_classify/src
+)
+
+##########
 set(tf_example_deep_model_srcs
         "${CMAKE_SOURCE_DIR}/example/deep_model.cc"
         )
