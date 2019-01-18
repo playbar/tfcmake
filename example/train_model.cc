@@ -117,7 +117,7 @@ using namespace tensorflow;
 int main(int argc, char* argv[])
 {
     try {
-        string data_dir = "mnist_data";
+        string data_dir = "../data";
         if (argc > 1) {
             data_dir = argv[1];
         }
@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
         // when using `bazel run` since the cwd isn't where you call
         // `bazel run` but from inside a temp folder.)
         GraphDef graph_def;
-        const char* graph_path = "mnist_graph.pb";
+        const char* graph_path = "../data/mnist_graph.pb";
         if (argc > 2) {
             graph_path = argv[2];
         }

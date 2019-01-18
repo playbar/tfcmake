@@ -13,6 +13,23 @@
 # limitations under the License.
 # ==============================================================================
 
+set(tf_example_deep_model_srcs
+        "${CMAKE_SOURCE_DIR}/example/deep_model.cc"
+        )
+
+add_executable(tf_example_deep_model
+        ${tf_example_deep_model_srcs}
+        )
+
+target_link_libraries(tf_example_deep_model PUBLIC
+        tensorflow
+        tf_cc
+        tf_cc_ops
+        #        ${tensorflow_EXTERNAL_LIBRARIES}
+        )
+
+##############
+
 set(tf_example_example_srcs
         "${CMAKE_SOURCE_DIR}/example/example.cc"
         )
@@ -65,28 +82,33 @@ target_link_libraries(tf_example_example PUBLIC
 
 ###########
 
+set(tf_example_simple_model_srcs
+        "${CMAKE_SOURCE_DIR}/example/simple_model.cc"
+        )
+
+add_executable(tf_example_simple_model
+        ${tf_example_simple_model_srcs}
+        )
+
+target_link_libraries(tf_example_simple_model PUBLIC
+        tensorflow
+        tf_cc
+        tf_cc_ops
+        #        ${tensorflow_EXTERNAL_LIBRARIES}
+        )
+
+##########
+
 set(tf_example_trainmodel_srcs
         "${CMAKE_SOURCE_DIR}/example/train_model.cc"
         )
 
 add_executable(tf_example_trainmodel
         ${tf_example_trainmodel_srcs}
-#        $<TARGET_OBJECTS:tf_core_lib>
-        $<TARGET_OBJECTS:tf_core_cpu>
-#        $<TARGET_OBJECTS:tf_core_framework>
-        $<TARGET_OBJECTS:tf_core_kernels>
-#        $<TARGET_OBJECTS:tf_cc_framework>
-#        $<TARGET_OBJECTS:tf_cc_ops>
-        $<TARGET_OBJECTS:tf_core_ops>
-        $<TARGET_OBJECTS:tf_core_direct_session>
         )
 
 target_link_libraries(tf_example_trainmodel PUBLIC
-        tf_protos_cc
-        tf_core_lib
-        tf_core_framework
-        tf_cc_framework
+        tensorflow
+        tf_cc
         tf_cc_ops
-        ${tf_core_gpu_kernels_lib}
-        ${tensorflow_EXTERNAL_LIBRARIES}
         )
