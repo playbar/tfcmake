@@ -8,10 +8,10 @@ ImageClassifier::ImageClassifier(const int &batch_size, const int &image_width, 
     : m_batch_size(batch_size), m_image_width(image_width), m_image_height(image_height),
       m_image_chenal(image_chenal), m_nof_class(nof_class)
 {
-    // this->build_fc_model();
+     this->build_fc_model();
 
     // the cnn model is under maintenance.
-    this->build_cnn_model();
+//    this->build_cnn_model();
 }
 
 ImageClassifier::~ImageClassifier()
@@ -76,6 +76,7 @@ void ImageClassifier::gradients_op(const tf::Scope &scope, const tf::OutputList 
     auto alpha = tfop::Const(scope, learn_rate, {});
     for (auto i = 0; i < inputs.size(); i++)
         this->m_outputlist.push_back(tfop::ApplyGradientDescent(scope, inputs[i], alpha, grad_outputs[i]));
+    return;
 }
 
 void ImageClassifier::build_fc_model()

@@ -2,7 +2,7 @@
 
 
 #include "tensorflow/cc/ops/const_op.h"
-#include "/mywork/github/tfcmake/cmake-build-debug/tensorflow/cc/ops/ctc_ops_internal.h"
+#include "tensorflow/cc/ops/ctc_ops_internal.h"
 
 namespace tensorflow {
 namespace ops {

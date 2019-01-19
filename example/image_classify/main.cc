@@ -23,6 +23,7 @@ int main()
         std::vector<int> labels;
         for (auto step = 1; p_dataset->get_batch(batch_size, filenames, labels); step++)
         {
+//            std::cout<< step << std::endl;
             auto accuracy = 0.f, loss = 0.f;
             p_image_classifier->train(filenames, labels, accuracy, loss);
             if (step % 100 == 0)

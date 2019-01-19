@@ -2,7 +2,7 @@
 
 
 #include "tensorflow/cc/ops/const_op.h"
-#include "/mywork/github/tfcmake/cmake-build-debug/tensorflow/cc/ops/lookup_ops.h"
+#include "tensorflow/cc/ops/lookup_ops.h"
 
 namespace tensorflow {
 namespace ops {
