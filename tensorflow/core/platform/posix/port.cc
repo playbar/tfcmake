@@ -173,7 +173,7 @@ double NominalCPUFrequency() {
 #ifdef TENSORFLOW_USE_ABSL
   return absl::base_internal::NominalCPUFrequency();
 #else
-  return 1.0;
+  return 2800000000;
 #endif
 }
 
