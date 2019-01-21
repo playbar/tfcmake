@@ -50,6 +50,22 @@ target_link_libraries(tf_example_deep_model PUBLIC
         #        ${tensorflow_EXTERNAL_LIBRARIES}
         )
 
+############
+set(tf_example_dnnmodel_srcs
+        "${CMAKE_SOURCE_DIR}/example/dnnmodel.cc"
+        )
+
+add_executable(tf_example_dnnmodel
+        ${tf_example_dnnmodel_srcs}
+        )
+
+target_link_libraries(tf_example_dnnmodel PUBLIC
+        tensorflow
+        tf_cc
+        tf_cc_ops
+        #        ${tensorflow_EXTERNAL_LIBRARIES}
+        )
+
 ##############
 
 set(tf_example_example_srcs
