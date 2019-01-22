@@ -16,7 +16,7 @@ limitations under the License.
 #include "tensorflow/cc/client/client_session.h"
 #include "tensorflow/cc/framework/testutil.h"
 #include "tensorflow/cc/ops/standard_ops.h"
-#include "tensorflow/cc/ops/test_op.h"
+//#include "tensorflow/cc/ops/test_op.h"
 #include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/framework/tensor_testutil.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
@@ -116,12 +116,12 @@ TEST(CCOpTest, ExampleTrainer) {
       out, test::AsTensor<float>({0.98058069, -0.19611613}, {2, 1}), 1e-5);
 }
 
-TEST(CCOpTest, ThrowAwayOp) {
-  Scope root = Scope::NewRootScope();
-  ThrowAway1(root, 1, 2.3f, 1, 1, 1, ThrowAway1::Builder(42));
-  ThrowAway2(root, ThrowAway2::ThrowAway2_(3).Scope(1));
-  TF_EXPECT_OK(root.status());
-}
+//TEST(CCOpTest, ThrowAwayOp) {
+//  Scope root = Scope::NewRootScope();
+//  ThrowAway1(root, 1, 2.3f, 1, 1, 1, ThrowAway1::Builder(42));
+//  ThrowAway2(root, ThrowAway2::ThrowAway2_(3).Scope(1));
+//  TF_EXPECT_OK(root.status());
+//}
 
 TEST(CCOpTest, ControlDeps) {
   Scope root = Scope::NewRootScope();

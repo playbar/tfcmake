@@ -46,7 +46,7 @@ function(AddTests)
     AddTest(
       TARGET ${exename}
       SOURCES ${sourcefile}
-      OBJECTS ${_AT_OBJECTS}
+#      OBJECTS ${_AT_OBJECTS}
       LIBS ${_AT_LIBS}
       DATA ${_AT_DATA}
       DEPENDS ${_AT_DEPENDS}
@@ -61,7 +61,7 @@ function(AddTest)
   cmake_parse_arguments(_AT "" "TARGET" "SOURCES;OBJECTS;LIBS;DATA;DEPENDS" ${ARGN})
 
   list(REMOVE_DUPLICATES _AT_SOURCES)
-  list(REMOVE_DUPLICATES _AT_OBJECTS)
+#  list(REMOVE_DUPLICATES _AT_OBJECTS)
   list(REMOVE_DUPLICATES _AT_LIBS)
   if (_AT_DATA)
     list(REMOVE_DUPLICATES _AT_DATA)
@@ -70,7 +70,8 @@ function(AddTest)
     list(REMOVE_DUPLICATES _AT_DEPENDS)
   endif(_AT_DEPENDS)
 
-  add_executable(${_AT_TARGET} ${_AT_SOURCES} ${_AT_OBJECTS})
+  add_executable(${_AT_TARGET} ${_AT_SOURCES})
+#  add_executable(${_AT_TARGET} ${_AT_SOURCES} ${_AT_OBJECTS})
   target_link_libraries(${_AT_TARGET} ${_AT_LIBS})
 
   GetTestRunPath(testdir ${_AT_TARGET})
@@ -342,7 +343,8 @@ if (tensorflow_BUILD_CC_TESTS)
   # tf_test_src_simple to your needs
   #
 
-  include_directories(${googletest_INCLUDE_DIRS})
+#  include_directories(${googletest_INCLUDE_DIRS})
+  include_directories(third_party/googletest/googletest/include)
 
   # cc tests wrapper
   set(tf_src_testlib
@@ -387,7 +389,7 @@ if (tensorflow_BUILD_CC_TESTS)
   set(tf_test_src_simple_exclude
     # generally not working
     "${tensorflow_source_dir}/tensorflow/cc/client/client_session_test.cc"
-    "${tensorflow_source_dir}/tensorflow/cc/framework/gradients_test.cc"
+#    "${tensorflow_source_dir}/tensorflow/cc/framework/gradients_test.cc"
     "${tensorflow_source_dir}/tensorflow/core/distributed_runtime/call_options_test.cc"
     "${tensorflow_source_dir}/tensorflow/core/distributed_runtime/tensor_coding_test.cc"
     "${tensorflow_source_dir}/tensorflow/core/kernels/remote_fused_graph_rewriter_transform_test.cc"
@@ -498,30 +500,35 @@ if (tensorflow_BUILD_CC_TESTS)
   # this is giving to much objects and libraries to the linker but
   # it makes this script much easier. So for now we do it this way.
   set(tf_obj_test
-    $<TARGET_OBJECTS:tf_core_lib>
-    $<TARGET_OBJECTS:tf_core_cpu>
-    $<TARGET_OBJECTS:tf_core_framework>
-    $<TARGET_OBJECTS:tf_core_kernels>
-    $<TARGET_OBJECTS:tf_cc>
-    $<TARGET_OBJECTS:tf_cc_framework>
-    $<TARGET_OBJECTS:tf_cc_ops>
-    $<TARGET_OBJECTS:tf_core_ops>
-    $<TARGET_OBJECTS:tf_core_direct_session>
-    $<$<BOOL:${tensorflow_ENABLE_GPU}>:$<TARGET_OBJECTS:tf_stream_executor>>
+#    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_core_cpu>
+#    $<TARGET_OBJECTS:tf_core_framework>
+#    $<TARGET_OBJECTS:tf_core_kernels>
+#    $<TARGET_OBJECTS:tf_cc>
+#    $<TARGET_OBJECTS:tf_cc_framework>
+#    $<TARGET_OBJECTS:tf_cc_ops>
+#    $<TARGET_OBJECTS:tf_core_ops>
+#    $<TARGET_OBJECTS:tf_cc_while_loop>
+#    $<TARGET_OBJECTS:tf_core_profiler>
+#    $<TARGET_OBJECTS:tf_core_direct_session>
+#    $<$<BOOL:${tensorflow_ENABLE_GPU}>:$<TARGET_OBJECTS:tf_stream_executor>>
   )
 
   set(tf_test_libs
-    tf_protos_cc
+    tensorflow
     tf_test_lib
-    ${tf_core_gpu_kernels_lib}
-    ${googletest_STATIC_LIBRARIES}
-    ${tensorflow_EXTERNAL_LIBRARIES}
+    gtest
+#    tf_protos_cc
+#    ${tf_core_gpu_kernels_lib}
+#    ${googletest_STATIC_LIBRARIES}
+#    re2
+#    ${tensorflow_EXTERNAL_LIBRARIES}
   )
 
   # All tests that require no data.
   AddTests(
     SOURCES ${tf_test_src_simple}
-    OBJECTS ${tf_obj_test}
+#    OBJECTS ${tf_obj_test}
     LIBS ${tf_test_libs}
   )
 
@@ -533,7 +540,7 @@ if (tensorflow_BUILD_CC_TESTS)
   AddTests(
     SOURCES ${tf_cc_saved_model_test_srcs}
     DATA ${tf_cc_saved_model_test_data}
-    OBJECTS ${tf_obj_test}
+#    OBJECTS ${tf_obj_test}
     LIBS ${tf_test_libs}
   )
 
@@ -544,7 +551,7 @@ if (tensorflow_BUILD_CC_TESTS)
   AddTests(
     SOURCES ${tf_core_profiler_test_srcs}
     DATA ${tf_core_profiler_test_data}
-    OBJECTS ${tf_obj_test}
+#    OBJECTS ${tf_obj_test}
     LIBS ${tf_test_libs}
   )
 

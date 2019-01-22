@@ -9,7 +9,7 @@ option(BUILD_GTEST "Builds the googletest subproject" ON)
 #Note that googlemock target already builds googletest
 option(BUILD_GMOCK "Builds the googlemock subproject" OFF)
 
-set(googletest_INCLUDE_DIRS third_party/googletest/googletest/include)
+#set(googletest_INCLUDE_DIRS googletest/include)
 
 if(BUILD_GMOCK)
   add_subdirectory( googlemock )
