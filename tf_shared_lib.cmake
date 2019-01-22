@@ -65,14 +65,15 @@ endif(WIN32)
 # tensorflow is a shared library containing all of the
 # TensorFlow runtime and the standard ops and kernels.
 add_library(tensorflow SHARED
-#    $<TARGET_OBJECTS:tf_c>
-#    $<TARGET_OBJECTS:tf_cc>
-#    $<TARGET_OBJECTS:tf_cc_framework>
-#    $<TARGET_OBJECTS:tf_cc_ops>
+    $<TARGET_OBJECTS:tf_c>
+    $<TARGET_OBJECTS:tf_cc>
+#    $<TARGET_OBJECTS:tf_protos_cc>
+    $<TARGET_OBJECTS:tf_cc_framework>
+    $<TARGET_OBJECTS:tf_cc_ops>
     $<TARGET_OBJECTS:tf_cc_while_loop>
-#    $<TARGET_OBJECTS:tf_core_lib>
+    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
-#    $<TARGET_OBJECTS:tf_core_framework>
+    $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_direct_session>
     $<TARGET_OBJECTS:tf_tools_transform_graph_lib>
@@ -86,13 +87,13 @@ add_library(tensorflow SHARED
 target_link_libraries(tensorflow PRIVATE
     ${tf_core_gpu_kernels_lib}
     re2
-    tf_c
-    tf_cc
-    tf_cc_framework
-    tf_cc_ops
-    tf_core_lib
-    tf_core_framework
-    tf_core_profiler
+#    tf_c
+#    tf_cc
+#    tf_cc_framework
+#    tf_cc_ops
+#    tf_core_lib
+#    tf_core_framework
+#    tf_core_profiler
     ${tensorflow_EXTERNAL_LIBRARIES}
     tf_protos_cc
 #    grpc++_unsecure

@@ -44,12 +44,13 @@ set(grpc_tensorflow_server_srcs
 
 add_executable(grpc_tensorflow_server
     ${grpc_tensorflow_server_srcs}
-#    $<TARGET_OBJECTS:tf_core_lib>
+#    $<TARGET_OBJECTS:tf_protos_cc>
+    $<TARGET_OBJECTS:tf_core_lib>
     $<TARGET_OBJECTS:tf_core_cpu>
-#    $<TARGET_OBJECTS:tf_core_framework>
+    $<TARGET_OBJECTS:tf_core_framework>
     $<TARGET_OBJECTS:tf_core_kernels>
-#    $<TARGET_OBJECTS:tf_cc_framework>
-#    $<TARGET_OBJECTS:tf_cc_ops>
+    $<TARGET_OBJECTS:tf_cc_framework>
+    $<TARGET_OBJECTS:tf_cc_ops>
     $<TARGET_OBJECTS:tf_core_ops>
     $<TARGET_OBJECTS:tf_core_direct_session>
     $<TARGET_OBJECTS:tf_core_distributed_runtime>
@@ -58,10 +59,10 @@ add_executable(grpc_tensorflow_server
 
 target_link_libraries(grpc_tensorflow_server PUBLIC
     tf_protos_cc
-    tf_core_lib
-    tf_core_framework
-    tf_cc_framework
-    tf_cc_ops
+#    tf_core_lib
+#    tf_core_framework
+#    tf_cc_framework
+#    tf_cc_ops
     ${tf_core_gpu_kernels_lib}
     ${tensorflow_EXTERNAL_LIBRARIES}
 )

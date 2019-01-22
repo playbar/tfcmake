@@ -386,7 +386,7 @@ file(GLOB_RECURSE tf_core_lib_test_srcs
 )
 list(REMOVE_ITEM tf_core_lib_srcs ${tf_core_lib_test_srcs})
 
-add_library(tf_core_lib STATIC
+add_library(tf_core_lib OBJECT
         ${tf_core_lib_srcs})
 
 #add_dependencies(tf_core_lib ${tensorflow_EXTERNAL_DEPENDENCIES} tf_protos_cc)
@@ -457,7 +457,7 @@ file(GLOB_RECURSE tf_core_framework_exclude_srcs
 
 list(REMOVE_ITEM tf_core_framework_srcs ${tf_core_framework_exclude_srcs})
 
-add_library(tf_core_framework STATIC
+add_library(tf_core_framework OBJECT
     ${tf_core_framework_srcs}
     ${tf_version_srcs}
     ${tf_proto_text_srcs}

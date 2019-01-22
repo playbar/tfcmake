@@ -25,8 +25,8 @@ add_executable(tf_example_image_classify
 
 target_link_libraries(tf_example_image_classify PUBLIC
         tensorflow
-        tf_cc
-        tf_cc_ops
+#        tf_cc
+#        tf_cc_ops
         #        ${tensorflow_EXTERNAL_LIBRARIES}
         )
 
@@ -45,8 +45,8 @@ add_executable(tf_example_deep_model
 
 target_link_libraries(tf_example_deep_model PUBLIC
         tensorflow
-        tf_cc
-        tf_cc_ops
+#        tf_cc
+#        tf_cc_ops
         #        ${tensorflow_EXTERNAL_LIBRARIES}
         )
 
@@ -61,62 +61,66 @@ add_executable(tf_example_dnnmodel
 
 target_link_libraries(tf_example_dnnmodel PUBLIC
         tensorflow
-        tf_cc
-        tf_cc_ops
+#        tf_cc
+#        tf_cc_ops
+#        tf_cc_framework
+#        tf_core_framework
         #        ${tensorflow_EXTERNAL_LIBRARIES}
         )
 
 ##############
 
-set(tf_example_example_srcs
-        "${CMAKE_SOURCE_DIR}/example/example.cc"
-        )
-
-add_executable(tf_example_example
-        ${tf_example_example_srcs}
-        )
-
-target_link_libraries(tf_example_example PUBLIC
-        tensorflow
-        tf_cc
-        tf_cc_ops
-#        ${tensorflow_EXTERNAL_LIBRARIES}
-        )
-
 #set(tf_example_example_srcs
-#    "${CMAKE_SOURCE_DIR}/example/example.cc"
-#)
+#        "${CMAKE_SOURCE_DIR}/example/example.cc"
+#        )
 #
 #add_executable(tf_example_example
-#    ${tf_example_example_srcs}
-##    $<TARGET_OBJECTS:tf_c>
-##    $<TARGET_OBJECTS:tf_cc>
-##    $<TARGET_OBJECTS:tf_core_lib>
-#    $<TARGET_OBJECTS:tf_core_cpu>
-##    $<TARGET_OBJECTS:tf_core_framework>
-#    $<TARGET_OBJECTS:tf_core_kernels>
-##    $<TARGET_OBJECTS:tf_cc_framework>
-##    $<TARGET_OBJECTS:tf_cc_ops>
-#    $<TARGET_OBJECTS:tf_core_profiler>
-#    $<TARGET_OBJECTS:tf_cc_while_loop>
-#    $<TARGET_OBJECTS:tf_core_ops>
-#    $<TARGET_OBJECTS:tf_core_distributed_runtime>
-#    $<TARGET_OBJECTS:tf_core_direct_session>
-#)
+#        ${tf_example_example_srcs}
+#        )
 #
 #target_link_libraries(tf_example_example PUBLIC
-#    tf_protos_cc
+#        tensorflow
+#        tf_cc
+#        tf_cc_ops
+##        ${tensorflow_EXTERNAL_LIBRARIES}
+#        )
+
+set(tf_example_example_srcs
+    "${CMAKE_SOURCE_DIR}/example/example.cc"
+)
+
+add_executable(tf_example_example
+    ${tf_example_example_srcs}
+#    $<TARGET_OBJECTS:tf_protos_cc>
+    $<TARGET_OBJECTS:tf_c>
+    $<TARGET_OBJECTS:tf_cc>
+    $<TARGET_OBJECTS:tf_core_lib>
+    $<TARGET_OBJECTS:tf_core_cpu>
+    $<TARGET_OBJECTS:tf_core_framework>
+    $<TARGET_OBJECTS:tf_core_kernels>
+    $<TARGET_OBJECTS:tf_cc_framework>
+    $<TARGET_OBJECTS:tf_cc_ops>
+    $<TARGET_OBJECTS:tf_core_profiler>
+    $<TARGET_OBJECTS:tf_cc_while_loop>
+    $<TARGET_OBJECTS:tf_core_ops>
+    $<TARGET_OBJECTS:tf_core_distributed_runtime>
+    $<TARGET_OBJECTS:tf_core_direct_session>
+)
+
+target_link_libraries(tf_example_example PUBLIC
+    tf_protos_cc
 #    tf_c
 #    tf_cc
 #    tf_core_framework
 #    tf_cc_framework
 #    tf_core_lib
 #    tf_cc_ops
-#    re2
-#    ${tf_core_kernels}
-#    ${tf_core_gpu_kernels_lib}
-#    ${tensorflow_EXTERNAL_LIBRARIES}
-#)
+#    tf_core_profiler
+    re2
+    ${tf_core_kernels}
+    ${tf_core_gpu_kernels_lib}
+    ${tensorflow_EXTERNAL_LIBRARIES}
+)
 
 ###########
 
@@ -130,8 +134,8 @@ add_executable(tf_example_simple_model
 
 target_link_libraries(tf_example_simple_model PUBLIC
         tensorflow
-        tf_cc
-        tf_cc_ops
+#        tf_cc
+#        tf_cc_ops
         #        ${tensorflow_EXTERNAL_LIBRARIES}
         )
 
@@ -147,6 +151,6 @@ add_executable(tf_example_trainmodel
 
 target_link_libraries(tf_example_trainmodel PUBLIC
         tensorflow
-        tf_cc
-        tf_cc_ops
+#        tf_cc
+#        tf_cc_ops
         )

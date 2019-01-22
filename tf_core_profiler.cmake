@@ -42,5 +42,5 @@ file(GLOB_RECURSE tf_core_profiler_exclude_srcs
 )
 list(REMOVE_ITEM tf_core_profiler_srcs ${tf_core_profiler_exclude_srcs})
 
-add_library(tf_core_profiler STATIC ${tf_core_profiler_srcs})
+add_library(tf_core_profiler OBJECT ${tf_core_profiler_srcs})
 add_dependencies(tf_core_profiler tf_core_lib)

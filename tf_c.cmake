@@ -29,7 +29,7 @@ set(tf_c_srcs
     "${tensorflow_source_dir}/tensorflow/c/tf_status_helper.h"
 )
 
-add_library(tf_c STATIC ${tf_c_srcs})
+add_library(tf_c OBJECT ${tf_c_srcs})
 
 add_dependencies(
   tf_c
