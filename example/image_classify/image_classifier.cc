@@ -74,8 +74,13 @@ void ImageClassifier::gradients_op(const tf::Scope &scope, const tf::OutputList 
     std::vector<tf::Output> grad_outputs;
     tf::AddSymbolicGradients(scope, outputs, inputs, &grad_outputs);
     auto alpha = tfop::Const(scope, learn_rate, {});
-    for (auto i = 0; i < inputs.size(); i++)
-        this->m_outputlist.push_back(tfop::ApplyGradientDescent(scope, inputs[i], alpha, grad_outputs[i]));
+    for (auto i = 0; i < inputs.size(); i++) {
+        auto output = grad_outputs[i];
+        auto input = inputs[i];
+        auto data = tfop::ApplyGradientDescent(scope, input, alpha, output);
+        this->m_outputlist.push_back(data);
+//        this->m_outputlist.push_back(tfop::ApplyGradientDescent(scope, inputs[i], alpha, grad_outputs[i]));
+    }
     return;
 }
 

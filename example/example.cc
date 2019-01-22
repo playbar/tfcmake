@@ -9,6 +9,85 @@
 using namespace tensorflow;
 using namespace tensorflow::ops;
 
+int SessionTest()
+{
+    auto root = Scope::NewRootScope();
+    auto p_session = new ClientSession(root);
+    delete p_session;
+    return 0;
+}
+
+int ConstTest()
+{
+    auto root = Scope::NewRootScope();
+    auto w = Const(root, 2, {});
+    auto p_session = new ClientSession(root);
+    std::vector<Tensor> outputs;
+    p_session->Run({w}, &outputs);
+    LOG(INFO) << "w = " << outputs[0].scalar<int>();
+    delete p_session;
+    return 0;
+}
+
+
+int VariableTest()
+{
+    auto root = Scope::NewRootScope();
+    auto x = Variable(root, {}, DataType::DT_INT32);
+    auto assign_x = Assign(root, x, 3); // initializer for x
+    auto y = Variable(root, {2, 3}, DataType::DT_FLOAT);
+    auto assign_y = Assign(root, y, RandomNormal(root, {2, 3}, DataType::DT_FLOAT)); // initializer for y
+    auto p_session = new ClientSession(root);
+    p_session->Run({assign_x, assign_y}, nullptr); // initialize
+    std::vector<Tensor> outputs;
+    p_session->Run({x, y}, &outputs);
+    LOG(INFO) << "x = " << outputs[0].scalar<int>();
+    LOG(INFO) << "y = " << outputs[1].matrix<float>();
+    delete p_session;
+    return 0;
+}
+
+int MatTest()
+{
+    auto root = Scope::NewRootScope();
+    auto x = Variable(root, {5, 2}, DataType::DT_FLOAT);
+    auto assign_x = Assign(root, x, RandomNormal(root, {5, 2}, DataType::DT_FLOAT));
+    auto y = Variable(root, {2, 3}, DataType::DT_FLOAT);
+    auto assign_y = Assign(root, y, RandomNormal(root, {2, 3}, DataType::DT_FLOAT));
+    auto xy = MatMul(root, x, y);
+    auto z = Const(root, 2.f, {5, 3});
+    auto xyz = Add(root, xy, z);
+    auto p_session = new ClientSession(root);
+    p_session->Run({assign_x, assign_y}, nullptr);
+    std::vector<Tensor> outputs;
+    p_session->Run({x, y, z, xy, xyz}, &outputs);
+    LOG(INFO) << "x = " << outputs[0].matrix<float>();
+    LOG(INFO) << "y = " << outputs[1].matrix<float>();
+    LOG(INFO) << "xy = " << outputs[3].matrix<float>();
+    LOG(INFO) << "z = " << outputs[2].matrix<float>();
+    LOG(INFO) << "xyz = " << outputs[4].matrix<float>();
+    delete p_session;
+    return 0;
+}
+
+int PlaceholderTest()
+{
+    auto root = Scope::NewRootScope();
+    auto x = Placeholder(root, DataType::DT_INT32);
+    auto w = Const(root, 1, {1, 2});
+    auto wx = MatMul(root, x, w);
+    auto b = Const(root, 2, {2});
+    auto wx_b = Add(root, wx, b);
+    auto p_session = new ClientSession(root);
+    std::vector<Tensor> outputs;
+    p_session->Run({{x, {{1}, {1}, {1}}}}, {wx, wx_b}, &outputs);
+    LOG(INFO) << "wx = " << outputs[0].matrix<int>();
+    LOG(INFO) << "wx_b = " << outputs[1].matrix<int>();
+    delete p_session;
+    return 0;
+}
+
+
 void GradientsTest1()
 {
     Scope root = Scope::NewRootScope();
@@ -65,7 +144,12 @@ void testCode(){
     std::cout<< outputs[0].matrix<float>();
 }
 
-int main() {
+int main()
+{
+    SessionTest();
+    ConstTest();
+    VariableTest();
+    PlaceholderTest();
     GradientsTest1();
     testCode();
     return 0;
