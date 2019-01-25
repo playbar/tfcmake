@@ -35,8 +35,6 @@ set(gRPC_INSTALL_LIBDIR "lib" CACHE STRING "Installation directory for libraries
 set(gRPC_INSTALL_INCLUDEDIR "include" CACHE STRING "Installation directory for headers")
 set(gRPC_INSTALL_CMAKEDIR "lib/cmake/${PACKAGE_NAME}" CACHE STRING "Installation directory for cmake config files")
 
-add_definitions(-DGRPC_ARES=0)
-
 # Options
 option(gRPC_BUILD_TESTS "Build tests" OFF)
 option(gRPC_BUILD_CODEGEN "Build codegen" ON)
@@ -113,9 +111,9 @@ else()
   set(_gRPC_PROTOBUF_LIBRARY_NAME "libprotobuf")
 endif()
 
-include(cmake/zlib.cmake)
+#include(cmake/zlib.cmake)
 include(cmake/cares.cmake)
-include(cmake/protobuf.cmake)
+#include(cmake/protobuf.cmake)
 include(cmake/ssl.cmake)
 include(cmake/gflags.cmake)
 include(cmake/benchmark.cmake)

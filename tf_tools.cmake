@@ -28,9 +28,9 @@ add_executable(${proto_text}
 )
 
 target_link_libraries(${proto_text} PUBLIC
-        ${tensorflow_EXTERNAL_LIBRARIES}
         re2
         tf_protos_cc
+        ${tensorflow_EXTERNAL_LIBRARIES}
 )
 
 add_dependencies(${proto_text} tf_core_lib)

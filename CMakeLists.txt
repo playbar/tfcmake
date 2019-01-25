@@ -31,7 +31,7 @@ option(tensorflow_BUILD_CC_EXAMPLE "Build the C++ tutorial example" ON)
 option(tensorflow_BUILD_PYTHON_BINDINGS "Build the Python bindings" ON)
 option(tensorflow_BUILD_ALL_KERNELS "Build all OpKernels" ON)
 option(tensorflow_BUILD_CONTRIB_KERNELS "Build OpKernels from tensorflow/contrib/..." ON)
-option(tensorflow_BUILD_CC_TESTS "Build cc unit tests " ON)
+option(tensorflow_BUILD_CC_TESTS "Build cc unit tests " OFF)
 option(tensorflow_BUILD_PYTHON_TESTS "Build python unit tests " OFF)
 option(tensorflow_BUILD_MORE_PYTHON_TESTS "Build more python unit tests for contrib packages" OFF)
 option(tensorflow_BUILD_SHARED_LIB "Build TensorFlow as a shared library" ON)
@@ -218,8 +218,8 @@ include(farmhash)
 include(fft2d)
 include(highwayhash)
 include(nsync)
-include(protobuf)
-#add_subdirectory(third_party/protobuf/cmake)
+#include(protobuf)
+add_subdirectory(third_party/protobuf/cmake)
 #include(re2)
 add_subdirectory(third_party/re2)
 include(cub)
@@ -233,6 +233,9 @@ endif()
 add_definitions(${ADD_CFLAGS})
 link_directories(${ADD_LINK_DIRECTORY})
 
+set(protobuf_STATIC_LIBRARIES
+        ${CMAKE_CURRENT_BINARY_DIR}/third_party/protobuf/cmake/libprotobuf.a)
+
 set(tensorflow_EXTERNAL_LIBRARIES
     ${gif_STATIC_LIBRARIES}
     png
@@ -245,6 +248,7 @@ set(tensorflow_EXTERNAL_LIBRARIES
     ${highwayhash_STATIC_LIBRARIES}
     ${nsync_STATIC_LIBRARIES}
     ${protobuf_STATIC_LIBRARIES}
+#    protobuf
 #    ${re2_STATIC_LIBRARIES}
     ${sqlite_STATIC_LIBRARIES}
     ${double_conversion_STATIC_LIBRARIES}
@@ -300,7 +304,8 @@ include_directories(
     ${highwayhash_INCLUDE_DIR}
     ${cub_INCLUDE_DIR}
     ${nsync_INCLUDE_DIR}
-    ${PROTOBUF_INCLUDE_DIRS}
+#    ${PROTOBUF_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/protobuf/src
 #    ${re2_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/re2
     ${sqlite_INCLUDE_DIR}
@@ -316,12 +321,19 @@ if(tensorflow_ENABLE_SSL_SUPPORT)
   include_directories(third_party/boringssl/include)
 endif()
 if(tensorflow_ENABLE_GRPC_SUPPORT)
-  include(grpc)
-#  add_subdirectory(third_party/grpc)
-  list(APPEND tensorflow_EXTERNAL_LIBRARIES ${grpc_STATIC_LIBRARIES})
+#  include(grpc)
+#  include(third_party/grpc/grpc.cmake)
+  add_subdirectory(third_party/grpc)
+#  list(APPEND tensorflow_EXTERNAL_LIBRARIES ${grpc_STATIC_LIBRARIES})
+  list(APPEND tensorflow_EXTERNAL_LIBRARIES
+          grpc++_unsecure
+          grpc_unsecure
+          address_sorting
+          c-ares
+          gpr)
   list(APPEND tensorflow_EXTERNAL_DEPENDENCIES grpc)
-  include_directories(${GRPC_INCLUDE_DIRS})
-#  include_directories(third_party/grpc/include)
+#  include_directories(${GRPC_INCLUDE_DIRS})
+  include_directories(third_party/grpc/include)
 endif()
 if(tensorflow_ENABLE_JEMALLOC_SUPPORT)
   include(jemalloc)
