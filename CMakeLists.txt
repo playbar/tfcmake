@@ -238,6 +238,7 @@ set(protobuf_STATIC_LIBRARIES
 
 set(tensorflow_EXTERNAL_LIBRARIES
     ${gif_STATIC_LIBRARIES}
+#    ${png_STATIC_LIBRARIES}
     png
     curl
     ${jpeg_STATIC_LIBRARIES}
