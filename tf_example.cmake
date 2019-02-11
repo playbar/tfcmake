@@ -34,6 +34,24 @@ target_include_directories(tf_example_image_classify PUBLIC
         ${CMAKE_SOURCE_DIR}/example/image_classify
 )
 
+################
+set(tf_example_linerpb_srcs
+        "${CMAKE_SOURCE_DIR}/example/linerpb/ann_model_loader.cpp"
+        "${CMAKE_SOURCE_DIR}/example/linerpb/linerpb.cpp"
+        )
+
+add_executable(tf_example_linerpb
+        ${tf_example_linerpb_srcs}
+        )
+
+target_link_libraries(tf_example_linerpb PUBLIC
+        tensorflow
+        )
+
+target_include_directories(tf_example_linerpb PUBLIC
+        ${CMAKE_SOURCE_DIR}/example/linerpb
+        )
+
 ##########
 set(tf_example_deep_model_srcs
         "${CMAKE_SOURCE_DIR}/example/deep_model.cc"
