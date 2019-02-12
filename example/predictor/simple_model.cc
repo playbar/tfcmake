@@ -1,7 +1,9 @@
 #include "tensorflow/core/public/session.h"
-#include "tensorflow/core/platform/env.h"
+#include "tensorflow/cc/ops/standard_ops.h"
+#include "tensorflow/core/framework/tensor.h"
 
 using namespace tensorflow;
+using namespace tensorflow::ops;
 
 /**
  * @brief deep model for click through rate prediction
@@ -11,13 +13,45 @@ using namespace tensorflow;
  *
  * @return [description]
  */
-int main(int argc, char* argv[]) {
+
+void train_model()
+{
+    Scope root = Scope::NewRootScope();
+
+    auto a = Variable(root.WithOpName("a"), { 5 }, DT_DOUBLE);
+    auto b = Variable(root.WithOpName("b"), { 6 }, DT_DOUBLE);
+    auto c = Multiply(root, a, b );
+
+
+    Session* session;
+    Status status = NewSession(SessionOptions(), &session);
+    if (!status.ok()) {
+        std::cerr << status.ToString() << std::endl;
+        return;
+    } else {
+        std::cout << "Session created successfully" << std::endl;
+    }
+
+    std::vector<Tensor> outputs;
+
+//    session->Run({a, b}, outputs);
+
+//    session->Extend()
+
+//    auto a = Variable
+
+    session->Close();
+}
+
+
+void simple_model()
+{
     // Initialize a tensorflow session
     Session* session;
     Status status = NewSession(SessionOptions(), &session);
     if (!status.ok()) {
         std::cerr << status.ToString() << std::endl;
-        return 1;
+        return;
     } else {
         std::cout << "Session created successfully" << std::endl;
     }
@@ -28,7 +62,7 @@ int main(int argc, char* argv[]) {
     status = ReadBinaryProto(Env::Default(), graph_path, &graph_def);
     if (!status.ok()) {
         std::cerr << status.ToString() << std::endl;
-        return 1;
+        return;
     } else {
         std::cout << "Load graph protobuf successfully" << std::endl;
     }
@@ -37,7 +71,7 @@ int main(int argc, char* argv[]) {
     status = session->Create(graph_def);
     if (!status.ok()) {
         std::cerr << status.ToString() << std::endl;
-        return 1;
+        return;
     } else {
         std::cout << "Add graph to session successfully" << std::endl;
     }
@@ -64,7 +98,7 @@ int main(int argc, char* argv[]) {
     status = session->Run(inputs, { "c", "d"}, {}, &outputs);
     if (!status.ok()) {
         std::cerr << status.ToString() << std::endl;
-        return 1;
+        return;
     } else {
         std::cout << "Run session successfully" << std::endl;
     }
@@ -86,5 +120,12 @@ int main(int argc, char* argv[]) {
     // Free any resources used by the session
     session->Close();
 
+    return;
+}
+
+int main(int argc, char* argv[])
+{
+    train_model();
+    simple_model();
     return 0;
 }
