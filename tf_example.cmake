@@ -87,6 +87,24 @@ target_include_directories(tf_example_deep_model PUBLIC
         ${CMAKE_SOURCE_DIR}/example/predictor
         )
 
+################
+set(tf_example_tutorial_srcs
+        "${CMAKE_SOURCE_DIR}/example/tutorial/ann_model_loader.cpp"
+        "${CMAKE_SOURCE_DIR}/example/tutorial/main.cpp"
+        )
+
+add_executable(tf_example_tutorial
+        ${tf_example_tutorial_srcs}
+        )
+
+target_link_libraries(tf_example_tutorial PUBLIC
+        tensorflow
+        )
+
+target_include_directories(tf_example_tutorial PUBLIC
+        ${CMAKE_SOURCE_DIR}/example/tutorial
+        )
+
 ############
 set(tf_example_dnnmodel_srcs
         "${CMAKE_SOURCE_DIR}/example/dnnmodel.cc"
