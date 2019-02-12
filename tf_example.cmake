@@ -52,9 +52,27 @@ target_include_directories(tf_example_linerpb PUBLIC
         ${CMAKE_SOURCE_DIR}/example/linerpb
         )
 
-##########
+################
+
+set(tf_example_simple_model_srcs
+        "${CMAKE_SOURCE_DIR}/example/predictor/simple_model.cc"
+        )
+
+add_executable(tf_example_simple_model
+        ${tf_example_simple_model_srcs}
+        )
+
+target_link_libraries(tf_example_simple_model PUBLIC
+        tensorflow
+        )
+
+target_include_directories(tf_example_simple_model PUBLIC
+        ${CMAKE_SOURCE_DIR}/example/predictor
+        )
+
+################
 set(tf_example_deep_model_srcs
-        "${CMAKE_SOURCE_DIR}/example/deep_model.cc"
+        "${CMAKE_SOURCE_DIR}/example/predictor/deep_model.cc"
         )
 
 add_executable(tf_example_deep_model
@@ -63,9 +81,10 @@ add_executable(tf_example_deep_model
 
 target_link_libraries(tf_example_deep_model PUBLIC
         tensorflow
-#        tf_cc
-#        tf_cc_ops
-        #        ${tensorflow_EXTERNAL_LIBRARIES}
+        )
+
+target_include_directories(tf_example_deep_model PUBLIC
+        ${CMAKE_SOURCE_DIR}/example/predictor
         )
 
 ############
@@ -136,23 +155,6 @@ target_link_libraries(tf_example_example PUBLIC
 #    ${tf_core_gpu_kernels_lib}
 #    ${tensorflow_EXTERNAL_LIBRARIES}
 #)
-
-###########
-
-set(tf_example_simple_model_srcs
-        "${CMAKE_SOURCE_DIR}/example/simple_model.cc"
-        )
-
-add_executable(tf_example_simple_model
-        ${tf_example_simple_model_srcs}
-        )
-
-target_link_libraries(tf_example_simple_model PUBLIC
-        tensorflow
-#        tf_cc
-#        tf_cc_ops
-        #        ${tensorflow_EXTERNAL_LIBRARIES}
-        )
 
 ##########
 

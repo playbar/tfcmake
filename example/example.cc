@@ -12,6 +12,10 @@ using namespace tensorflow::ops;
 int SessionTest()
 {
     auto root = Scope::NewRootScope();
+    string str = root.GetUniqueNameForOp("add");
+    str = root.GetUniqueNameForOp("add");
+    str = root.GetUniqueNameForOp("add");
+    str = root.GetUniqueNameForOp("mul");
     auto p_session = new ClientSession(root);
     delete p_session;
     return 0;
@@ -126,6 +130,7 @@ void GradientsTest1()
         TF_CHECK_OK(session.Run( { {x,{{1.0,-1.0,3.0}, {1.0,2.0,1.0}, {1.0,-2.0,-2.0}, {1.0,0.0,2.0}}}, {y,{{14.0}, {15.0}, {-9.0}, {13.0}}} } , {loss, apply_grad_W}, &outputs));
         std::cout << std::string("loss: ") << outputs[0].scalar<double>() << std::endl << std::string("weights: ")<< outputs[1].matrix<double>() << std::endl;
     }
+
 }
 
 void testCode(){

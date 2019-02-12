@@ -123,8 +123,8 @@ void dnnmode()
 
 int main()
 {
-//    GradientsTest1();
-    dnnmode();
+    GradientsTest1();
+//    dnnmode();
     return 0;
 }
 

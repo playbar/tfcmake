@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
 
   // Load the protobuf graph
   GraphDef graph_def;
-  std::string graph_path = "./graph.pb";
+  std::string graph_path = argv[1];
   status = ReadBinaryProto(Env::Default(), graph_path, &graph_def);
   if (!status.ok()) {
     std::cerr << status.ToString() << std::endl;
