@@ -31,6 +31,7 @@ limitations under the License.
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/public/session.h"
 
+using namespace tensorflow;
 using tensorflow::string;
 using tensorflow::int32;
 
@@ -130,8 +131,7 @@ void ConcurrentSteps(const Options* opts, int session_index) {
         const Tensor& y = outputs[0];
         const Tensor& y_norm = outputs[1];
         // Print out lambda, x, and y.
-        std::printf("%06d/%06d %s\n", session_index, step,
-                    DebugString(x, y).c_str());
+        std::printf("%06d/%06d %s\n", session_index, step, DebugString(x, y).c_str());
         // Copies y_normalized to x.
         x = y_norm;
       }
