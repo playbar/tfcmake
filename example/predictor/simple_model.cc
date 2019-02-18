@@ -41,6 +41,7 @@ void train_model()
 //    auto a = Variable
 
     session->Close();
+    delete session;
 }
 
 
@@ -65,6 +66,13 @@ void simple_model()
         return;
     } else {
         std::cout << "Load graph protobuf successfully" << std::endl;
+    }
+
+    int size = graph_def.node_size();
+    for( int i = 0; i < size; ++i ){
+        NodeDef node = graph_def.node(i);
+        std::cout<< node.name() << std::endl;
+
     }
 
     // Add the graph to the session
@@ -125,7 +133,7 @@ void simple_model()
 
 int main(int argc, char* argv[])
 {
-    train_model();
+//    train_model();
     simple_model();
     return 0;
 }

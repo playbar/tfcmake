@@ -47,6 +47,10 @@ int VariableTest()
     p_session->Run({x, y}, &outputs);
     LOG(INFO) << "x = " << outputs[0].scalar<int>();
     LOG(INFO) << "y = " << outputs[1].matrix<float>();
+
+    std::string graph_path = "graph.pb"; //argv[1];
+    Status status = WriteBinaryProto(Env::Default(), graph_path, );
+
     delete p_session;
     return 0;
 }

@@ -176,6 +176,20 @@ target_link_libraries(tf_example_example PUBLIC
 
 ##########
 
+set(tf_example_trainer_srcs
+        "${CMAKE_SOURCE_DIR}/example/example_trainer.cc"
+        )
+
+add_executable(tf_example_trainer
+        ${tf_example_trainer_srcs}
+        )
+
+target_link_libraries(tf_example_trainer PUBLIC
+        tensorflow
+        )
+
+##########
+
 set(tf_example_trainmodel_srcs
         "${CMAKE_SOURCE_DIR}/example/train_model.cc"
         )
